@@ -1,0 +1,38 @@
+name: Validate challenges
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - qa-branch
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install PyYAML
+      - name: Validate challenge.yml files
+        run: python scripts/validate_challenges.py
+      - name: Build Docker challenges
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            dir="$(dirname "$file")"
+            docker build "$dir"
+          done < <(find . -name Dockerfile -print0)
+      - name: Check and build Compose challenges
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            dir="$(dirname "$file")"
+            if docker compose -f "$file" config --quiet; then
+              docker compose -f "$file" build
+            fi
+          done < <(find . \( -name docker-compose.yml -o -name docker-compose.yaml -o -name compose.yml -o -name compose.yaml \) -print0)
