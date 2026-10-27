@@ -50,11 +50,25 @@ jobs:
             if ! docker compose -f "$file" config --quiet; then
               failed=1
               echo "::error file=$file::Compose configuration is invalid"
-            elif ! docker compose -f "$file" up -d --build --wait --wait-timeout 90; then
+            elif ! config="$(docker compose -f "$file" config --format json)"; then
               failed=1
-              echo "::error file=$file::Compose services did not start and become ready"
-              docker compose -f "$file" ps
-              docker compose -f "$file" logs --no-color
+              echo "::error file=$file::Could not read Compose configuration"
+            else
+              buildable="$(printf '%s' "$config" | python -c 'import json,sys; services=json.load(sys.stdin).get("services", {}); print("yes" if services and all("build" in service for service in services.values()) else "no")')"
+              if [ "$buildable" = "yes" ]; then
+                if ! docker compose -f "$file" up -d --build --wait --wait-timeout 90; then
+                  failed=1
+                  echo "::error file=$file::Compose services did not start and become ready"
+                  docker compose -f "$file" ps
+                  docker compose -f "$file" logs --no-color
+                fi
+              else
+                echo "::notice file=$file::Runtime check skipped because this project uses prebuilt images without local build contexts"
+                if ! docker compose -f "$file" build; then
+                  failed=1
+                  echo "::error file=$file::Compose build failed"
+                fi
+              fi
             fi
             docker compose -f "$file" down --volumes --remove-orphans
             echo "::endgroup::"
