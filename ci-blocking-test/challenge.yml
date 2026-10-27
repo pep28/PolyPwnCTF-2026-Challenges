@@ -1,0 +1,8 @@
+name: CI blocking test
+author: pep28
+category: Misc
+type: standard
+value: not-an-integer
+description: Temporary manifest used to verify that failed checks prevent merging.
+flags:
+  - polycyber{ci_blocking_test}
