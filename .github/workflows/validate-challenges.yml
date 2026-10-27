@@ -58,10 +58,13 @@ jobs:
             if ! docker compose -f "$file" config --quiet; then
               failed=1
               echo "::error file=$file::Compose configuration is invalid"
-            elif ! docker compose -f "$file" build; then
+            elif ! docker compose -f "$file" up -d --build --wait --wait-timeout 90; then
               failed=1
-              echo "::error file=$file::Compose build failed"
+              echo "::error file=$file::Compose services did not start and become ready"
+              docker compose -f "$file" ps
+              docker compose -f "$file" logs --no-color
             fi
+            docker compose -f "$file" down --volumes --remove-orphans
             echo "::endgroup::"
           done < <(find . \( -name docker-compose.yml -o -name docker-compose.yaml -o -name compose.yml -o -name compose.yaml \) -print0)
           exit "$failed"
