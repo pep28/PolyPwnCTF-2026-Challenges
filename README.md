@@ -4,6 +4,10 @@ Ce dépôt contient les challenges de l'édition 2026 du PolyPwn, un CTF (Captur
 
 Les challenges seront à terme accessibles sur l'infrastructure permanente de PolyCyber : https://ctf.polycyber.io/
 
+## CI
+
+Les contrôles automatiques, le passage par la branche QA et les commandes de test sont décrits dans [docs/ci.md](docs/ci.md).
+
 ## À propos
 
 PolyPwn est un événement annuel qui rassemble des passionnés de cybersécurité pour résoudre des défis techniques dans différents domaines :
@@ -29,6 +33,10 @@ Les challenges sont organisés par catégories dans des dossiers dédiés. Chaqu
 This repository contains the challenges for the 2026 edition of PolyPwn, a CTF (Capture The Flag) event organized by [PolyCyber](https://polycyber.io/).
 
 The challenges will at some point be accessible directly on the permanent PolyCyber infrastructure: https://ctf.polycyber.io/
+
+## CI
+
+See [docs/ci.md](docs/ci.md) for the checks, QA workflow and test commands.
 
 ## About
 
