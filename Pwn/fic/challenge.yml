@@ -1,5 +1,5 @@
 name: FIC
-author: !ntrus'!on feat RAVEN
+author: "!ntrus'!on feat RAVEN"
 category: Pwn
 
 type: zync
@@ -29,4 +29,3 @@ tags:
 
 files:
   - public/pod
-

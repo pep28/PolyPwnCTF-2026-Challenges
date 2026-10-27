@@ -18,7 +18,7 @@ services:
     container_name: vault13-backend
     hostname: backend
     environment:
-      - FLAG=flag{smuggl3d_p4st_th3_w4st3l4nd_f1r3w4ll}
+      - FLAG=polycyber{smuggl3d_p4st_th3_w4st3l4nd_f1r3w4ll}
     networks:
       - vault13
 networks:
