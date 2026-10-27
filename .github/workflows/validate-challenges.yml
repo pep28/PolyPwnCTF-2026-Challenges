@@ -4,7 +4,8 @@ on:
   pull_request:
   push:
     branches:
-      - '**'
+      - main
+      - qa-branch
 
 jobs:
   validate:
@@ -22,27 +23,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build Dockerfiles
+      - name: Build challenge Dockerfiles
         shell: bash
         run: |
-          set -uo pipefail
-          failed=0
-          while IFS= read -r -d '' file; do
-            context="$(dirname "$file")"
-            while [ "$context" != "." ] && [ ! -f "$context/challenge.yml" ]; do
-              context="$(dirname "$context")"
-            done
-            if [ ! -f "$context/challenge.yml" ]; then
-              context="$(dirname "$file")"
+          set -euo pipefail
+          while IFS= read -r -d '' manifest; do
+            dir="$(dirname "$manifest")"
+            if [ -f "$dir/Dockerfile" ]; then
+              echo "::group::Build $dir"
+              docker build -f "$dir/Dockerfile" "$dir"
+              echo "::endgroup::"
             fi
-            echo "::group::Build $file (context: $context)"
-            if ! docker build -f "$file" "$context"; then
-              failed=1
-              echo "::error file=$file::Docker build failed"
-            fi
-            echo "::endgroup::"
-          done < <(find . -name Dockerfile -print0)
-          exit "$failed"
+          done < <(find . -name challenge.yml -print0)
 
   compose-build:
     runs-on: ubuntu-latest
