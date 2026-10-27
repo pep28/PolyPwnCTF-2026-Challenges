@@ -17,21 +17,51 @@ jobs:
       - run: pip install PyYAML
       - name: Validate challenge.yml files
         run: python scripts/validate_challenges.py
-      - name: Build Docker challenges
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Dockerfiles
         shell: bash
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          failed=0
           while IFS= read -r -d '' file; do
-            dir="$(dirname "$file")"
-            docker build "$dir"
-          done < <(find . -name Dockerfile -print0)
-      - name: Check and build Compose challenges
-        shell: bash
-        run: |
-          set -euo pipefail
-          while IFS= read -r -d '' file; do
-            dir="$(dirname "$file")"
-            if docker compose -f "$file" config --quiet; then
-              docker compose -f "$file" build
+            context="$(dirname "$file")"
+            while [ "$context" != "." ] && [ ! -f "$context/challenge.yml" ]; do
+              context="$(dirname "$context")"
+            done
+            if [ ! -f "$context/challenge.yml" ]; then
+              context="$(dirname "$file")"
             fi
+            echo "::group::Build $file (context: $context)"
+            if ! docker build -f "$file" "$context"; then
+              failed=1
+              echo "::error file=$file::Docker build failed"
+            fi
+            echo "::endgroup::"
+          done < <(find . -name Dockerfile -print0)
+          exit "$failed"
+
+  compose-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate and build Compose projects
+        shell: bash
+        run: |
+          set -uo pipefail
+          failed=0
+          while IFS= read -r -d '' file; do
+            echo "::group::Compose $file"
+            if ! docker compose -f "$file" config --quiet; then
+              failed=1
+              echo "::error file=$file::Compose configuration is invalid"
+            elif ! docker compose -f "$file" build; then
+              failed=1
+              echo "::error file=$file::Compose build failed"
+            fi
+            echo "::endgroup::"
           done < <(find . \( -name docker-compose.yml -o -name docker-compose.yaml -o -name compose.yml -o -name compose.yaml \) -print0)
+          exit "$failed"
