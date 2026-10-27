@@ -4,13 +4,14 @@ FROM php:8.2-apache
 # Install system dependencies: MariaDB, build tools, socat
 RUN apt-get update && apt-get install -y \
     libmariadb-dev \
+    libcurl4-openssl-dev \
     gcc \
     make \
     socat \
     && rm -rf /var/lib/apt/lists/*
 
 # Install and enable the mysqli extension
-RUN docker-php-ext-install mysqli && docker-php-ext-enable mysqli
+RUN docker-php-ext-install mysqli curl && docker-php-ext-enable mysqli
 
 # ── Dedicated service user ───────────────────────────────────────────────────
 RUN useradd -m -s /bin/sh -r biosynth

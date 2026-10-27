@@ -16,7 +16,7 @@ def main():
 		if location == "/":
 			break
 		url = f"{BASE_URL}{location}"
-	print(f"polycyber{{{''.join(flag)}}}")
+	print(''.join(flag))
 
 
 if __name__ == '__main__':

