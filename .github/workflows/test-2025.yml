@@ -1,0 +1,54 @@
+name: Test 2025 compatibility
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ci/compatibility-2025]
+
+permissions:
+  contents: read
+
+jobs:
+  manifests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ci
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: polycyber/PolyPwnCTF-2025-Challenges
+          ref: 606c0158e7cbffa5bc4f65c7a82e5edbccfe2ec4
+          path: challenges
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install PyYAML
+      - run: python ci/scripts/validate_challenges.py challenges
+
+  deployments:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [docker, compose]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ci
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: polycyber/PolyPwnCTF-2025-Challenges
+          ref: 606c0158e7cbffa5bc4f65c7a82e5edbccfe2ec4
+          path: challenges
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install PyYAML requests
+      - run: python ci/scripts/test_deployments.py ${{ matrix.mode }} --root challenges --config ci/.github/ci/deployments-2025.yml

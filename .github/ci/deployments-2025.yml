@@ -1,0 +1,91 @@
+docker:
+  AI/exMachinhack:
+    image: exmachinhack
+    checks:
+      - {port: 1337}
+  Programming/hackladdin1:
+    image: hackladdin1
+    checks:
+      - {port: 1337}
+  Programming/hackladdin2:
+    image: hackladdin2
+    checks:
+      - {port: 1337}
+  Cryptography/Interstellar2:
+    checks:
+      - {port: 1337}
+  Misc/Operation Dark Sabotage 1:
+    checks:
+      - {port: 22, contains: SSH-2.0}
+  Misc/Operation Dark Sabotage 2:
+    checks:
+      - {port: 22, contains: SSH-2.0}
+  Misc/Operation Dark Sabotage 3:
+    checks:
+      - {port: 22, contains: SSH-2.0}
+  Misc/Operation Dark Sabotage 4:
+    checks:
+      - {port: 22, contains: SSH-2.0}
+  Misc/Yoda Calculator:
+    checks:
+      - {port: 4444}
+  Programming/Order66:
+    checks:
+      - {port: 4444}
+  Programming/Plats en Pagaille:
+    checks:
+      - {port: 1437}
+  Pwn/Be a jedi:
+    checks:
+      - {port: 4445}
+  Pwn/Empire Server:
+    checks:
+      - {port: 9999, http: /}
+  Pwn/Padawan:
+    checks:
+      - {port: 4446}
+  Pwn/Shared file:
+    checks:
+      - {port: 4444, send: "3\nci\n", eof: true}
+      - command: [test, -s, /home/user/secret.txt]
+  Pwn/unsafe-rust:
+    checks:
+      - {port: 4444}
+  Web/Les Aventuriers du Cache Perdu:
+    checks:
+      - {port: 80, http: /}
+      - {port: 8000, http: /}
+compose:
+  Misc/Oceans1:
+    services:
+      nginx:
+        - {port: 80, http: /}
+        - {port: 80, http: /, headers: {Host: manager.polypwngrand.ctf}}
+      cams:
+        - {port: 80, http: /}
+        - {port: 554, send: "OPTIONS rtsp://localhost/ RTSP/1.0\r\nCSeq: 1\r\n\r\n", contains: RTSP/1.0}
+      slots:
+        - {port: 80, http: /}
+  Web/FastAndFurryOS_1:
+    services:
+      frontend:
+        - {port: 8080, http: /}
+      backend:
+        - {port: 5000, http: /}
+  Web/Hack_The_matix:
+    services:
+      hack_the_matrix:
+        - {port: 80, http: /}
+        - command: [mysqladmin, ping, --silent]
+  Web/Star-Command:
+    services:
+      php:
+        - {port: 80, http: /}
+      mysql:
+        - command: [mysqladmin, ping, --silent]
+  Web/hi-im-janet:
+    services:
+      frontend:
+        - {port: 80, http: /}
+      backend-server:
+        - {port: 8000, http: /derek/v1/ask, method: OPTIONS, contains: Please use a supported HTTP verb}
