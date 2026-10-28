@@ -116,7 +116,8 @@ def validate(path):
         elif extra['minimum'] > extra['initial']:
             errors.append('extra.minimum ne peut pas dépasser extra.initial.')
     if data.get('type') == 'zync' or 'deploy_parameters' in data:
-        if not text(data.get('playbook_name')):
+        legacy_compose = 'playbook_name' not in data and isinstance(data.get('deploy_parameters'), dict) and 'expose' in data['deploy_parameters']
+        if not legacy_compose and not text(data.get('playbook_name')):
             errors.append('playbook_name doit être du texte non vide.')
         params = data.get('deploy_parameters')
         if not isinstance(params, dict):
@@ -124,7 +125,14 @@ def validate(path):
         else:
             if 'unique' in params and type(params['unique']) is not bool:
                 errors.append('deploy_parameters.unique doit être un booléen.')
-            if data.get('playbook_name') == 'custom_compose':
+            if legacy_compose:
+                compose_files = [path.parent / name for name in ('compose.yml', 'compose.yaml', 'docker-compose.yml', 'docker-compose.yaml')]
+                if not any(f.is_file() for f in compose_files):
+                    errors.append('Le déploiement expose nécessite un fichier Compose.')
+                expose = params['expose']
+                if not isinstance(expose, list) or not expose or not all(isinstance(item, dict) and text(item.get('service')) and type(item.get('port')) is int and 0 < item['port'] <= 65535 and item.get('type') in ('http', 'tcp', 'udp') for item in expose):
+                    errors.append('deploy_parameters.expose doit définir service, port et type.')
+            elif data.get('playbook_name') == 'custom_compose':
                 definition = params.get('compose_definition')
                 try:
                     if isinstance(definition, str):

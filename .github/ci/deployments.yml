@@ -13,7 +13,7 @@ docker:
       - {port: 80, http: /}
   Reverse/Solution Mixer:
     checks:
-      - {port: 34512, send: "MIX|water|water|1|1|1\n", contains: "|"}
+      - {port: 34512, send: "MIX|water|water|1|1|1\n", contains: "RESULT|"}
   Stegano/Back to the Past:
     checks:
       - {port: 8000, http: /health}

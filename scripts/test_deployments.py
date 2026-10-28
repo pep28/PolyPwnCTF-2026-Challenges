@@ -33,7 +33,7 @@ def probe(container, check):
     if 'http' in check:
         conn = http.client.HTTPConnection(host, port, timeout=3)
         try:
-            conn.request('GET', check['http'])
+            conn.request(check.get('method', 'GET'), check['http'], headers=check.get('headers', {}))
             response = conn.getresponse()
             body = response.read(1048576).decode(errors='replace')
             if response.status != check.get('status', 200):
@@ -41,9 +41,11 @@ def probe(container, check):
         finally:
             conn.close()
     else:
-        with socket.create_connection((host, port), timeout=3) as conn:
+        with socket.create_connection((host, port), timeout=5) as conn:
             if 'send' in check:
                 conn.sendall(check['send'].encode())
+            if check.get('eof'):
+                conn.shutdown(socket.SHUT_WR)
             data = b''
             while len(data) < 65536:
                 chunk = conn.recv(4096)
@@ -53,7 +55,7 @@ def probe(container, check):
                 if check.get('contains', '').encode() in data:
                     break
             body = data.decode(errors='replace')
-            if not body:
+            if not body and not check.get('eof'):
                 raise RuntimeError(f'No response on TCP {port}')
     if check.get('contains', '') not in body:
         raise RuntimeError(f'Unexpected response on port {port}')
@@ -111,11 +113,16 @@ def test(root, path, config, mode):
                 containers[service] = ids[0]
             checks = config['services']
         else:
-            run('docker', 'build', '-t', name, str(directory), timeout=1200)
+            image = name
+            if (directory / 'Dockerfile').is_file():
+                run('docker', 'build', '-t', name, str(directory), timeout=1200)
+            else:
+                image = config['image']
+                run('docker', 'pull', image, timeout=300)
             args = ['docker', 'run', '-d', '--name', name]
             for port in config.get('publish', []):
                 args += ['-p', f'127.0.0.1:{port}:{port}']
-            containers['app'] = run(*args, name, capture=True)
+            containers['app'] = run(*args, image, capture=True)
             checks = {'app': config['checks']}
         wait_ready(containers, checks)
         for solution in config.get('solutions', []):
@@ -125,10 +132,12 @@ def test(root, path, config, mode):
         for container in containers.values():
             subprocess.run(['docker', 'logs', '--tail', '50', container], check=False, timeout=15)
         if compose:
+            subprocess.run([*compose, 'logs', '--tail', '30', '--no-color'], check=False, timeout=30)
             run(*compose, 'down', '--volumes', '--remove-orphans', timeout=60)
         else:
             subprocess.run(['docker', 'rm', '-f', name], check=False, timeout=30)
-            subprocess.run(['docker', 'image', 'rm', name], check=False, timeout=30)
+            if (directory / 'Dockerfile').is_file():
+                subprocess.run(['docker', 'image', 'rm', name], check=False, timeout=30)
 
 
 def main():
@@ -143,7 +152,9 @@ def main():
     for manifest in root.rglob('challenge.yml'):
         directory = manifest.parent
         compose = any((directory / f).is_file() for f in COMPOSE_NAMES)
-        if (args.mode == 'compose' and compose) or (args.mode == 'docker' and not compose and (directory / 'Dockerfile').is_file()):
+        data = yaml.safe_load(manifest.read_text())
+        deployed = isinstance(data, dict) and data.get('type') == 'zync'
+        if (args.mode == 'compose' and compose) or (args.mode == 'docker' and not compose and ((directory / 'Dockerfile').is_file() or deployed)):
             discovered.add(directory.relative_to(root).as_posix())
     entries = config[args.mode]
     if set(entries) != discovered:
