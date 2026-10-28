@@ -32,7 +32,7 @@ flags:
 requirements:
     - "Lab Attack 3"
 
-file:
+files:
 - ./monitor.ps1
 
 tags:
