@@ -54,7 +54,7 @@ compose:
   Pwn/up:
     services:
       pwn:
-        - {port: 1001}
+        - {port: 1001, send: "ci\n\0", contains: "ci"}
   Web/CatLab 1:
     override: .github/ci/catlab-compose.yml
     services:
