@@ -1,0 +1,41 @@
+name: Verify Interstellar2 build fix
+
+on:
+  push:
+    branches: [ci/interstellar-2025]
+
+permissions:
+  contents: read
+
+jobs:
+  interstellar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ci
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: polycyber/PolyPwnCTF-2025-Challenges
+          ref: 606c0158e7cbffa5bc4f65c7a82e5edbccfe2ec4
+          path: challenges
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install PyYAML
+      - run: git apply ../ci/.github/ci/interstellar-2025.patch
+        working-directory: challenges
+      - run: |
+          python - <<'PY'
+          import sys
+          from pathlib import Path
+          import yaml
+          sys.path.insert(0, "ci/scripts")
+          from test_deployments import test
+          config = yaml.safe_load(Path("ci/.github/ci/deployments-2025.yml").read_text())
+          path = "Cryptography/Interstellar2"
+          test(Path("challenges").resolve(), path, config["docker"][path], "docker")
+          PY
