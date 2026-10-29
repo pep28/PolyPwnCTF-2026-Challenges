@@ -6,3 +6,5 @@ services:
       - "1000:1000"
     restart: unless-stopped
     read_only: true
+    tmpfs:
+      - /tmp:rw,exec,nosuid,size=16m

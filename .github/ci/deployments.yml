@@ -1,0 +1,75 @@
+docker:
+  Cryptography/NSSHA 1:
+    checks:
+      - {port: 8888, contains: "Welcome to NSSHA"}
+  Cryptography/NSSHA 2:
+    checks:
+      - {port: 8888, contains: "Welcome to NSSHA"}
+  Forensic/Arc7 Lab:
+    checks:
+      - {port: 80, http: /}
+  Reverse/LabOps 1:
+    checks:
+      - {port: 80, http: /}
+  Reverse/Solution Mixer:
+    checks:
+      - {port: 34512, send: "MIX|water|water|1|1|1\n", contains: "RESULT|"}
+  Stegano/Back to the Past:
+    checks:
+      - {port: 8000, http: /health}
+  Stegano/Labo Rinthe:
+    publish: [5000]
+    checks:
+      - {port: 5000, http: /}
+    solutions:
+      - [Stegano/Labo Rinthe, Stegano/Labo Rinthe/solution/script.py]
+  Web/Concealed Warehouse:
+    checks:
+      - {port: 5000, http: /}
+  Web/DNA Visualizer 1:
+    checks:
+      - {port: 80, http: /}
+      - {port: 80, http: /api/, contains: "Welcome to the DNA Molecule Generator!"}
+  Web/Null Return:
+    checks:
+      - {port: 5000, http: /}
+  Web/Secure Update Service:
+    checks:
+      - {port: 80, http: /}
+compose:
+  Forensic/Nexus Labs 1:
+    services:
+      web:
+        - {port: 8080, http: /}
+  Misc/Rabb-IT H.O.L:
+    services:
+      web:
+        - {port: 80, http: /}
+        - {port: 22, contains: SSH-2.0}
+        - command: [mariadb-admin, ping, --silent]
+  Pwn/fic:
+    services:
+      pwn:
+        - {port: 1000, contains: "Enter your message:"}
+  Pwn/up:
+    services:
+      pwn:
+        - {port: 1001, send: "ci\n\0", contains: "ci"}
+  Web/CatLab 1:
+    override: .github/ci/catlab-compose.yml
+    services:
+      db: []
+      web:
+        - {port: 80, http: /index.php}
+        - command: [php, -r, 'exit(@fsockopen("127.0.0.1", 1337) === false ? 1 : 0);']
+    solutions:
+      - [Web/CatLab 1, Web/CatLab 1/solution/solve.py]
+      - [Pwn/CatLab 2, Pwn/CatLab 2/solution/solve.py]
+  Web/Vault13 Research Terminal:
+    services:
+      haproxy:
+        - {port: 8080, http: /, contains: VAULT-13}
+      backend:
+        - {port: 5000, http: /, contains: VAULT-13}
+    solutions:
+      - [Web/Vault13 Research Terminal, Web/Vault13 Research Terminal/solution/solve.py]

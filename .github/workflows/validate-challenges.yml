@@ -3,112 +3,42 @@ name: Validate challenges
 on:
   pull_request:
   push:
-    branches:
-      - main
-      - qa-branch
+    branches: [main, qa-branch]
+
+permissions:
+  contents: read
 
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install PyYAML
-      - name: Validate challenge.yml files
-        run: python scripts/validate_challenges.py
+      - run: python -m unittest discover -s tests
+      - run: python scripts/validate_challenges.py
 
   docker-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install PyYAML requests
-      - name: Build challenge Dockerfiles
-        shell: bash
-        run: |
-          set -euo pipefail
-          while IFS= read -r -d '' manifest; do
-            dir="$(dirname "$manifest")"
-            if [ -f "$dir/Dockerfile" ]; then
-              echo "::group::Build $dir"
-              if [ "$dir" = "./Stegano/Labo Rinthe" ]; then
-                docker build -t ci-laborinthe -f "$dir/Dockerfile" "$dir"
-              else
-                docker build -f "$dir/Dockerfile" "$dir"
-              fi
-              echo "::endgroup::"
-            fi
-          done < <(find . -name challenge.yml -print0)
-
-      - name: Test Labo Rinthe solution
-        shell: bash
-        run: |
-          set -euo pipefail
-          trap 'docker rm -f ci-laborinthe >/dev/null 2>&1 || true' EXIT
-          docker run --rm -d --name ci-laborinthe -p 127.0.0.1:5000:5000 ci-laborinthe
-          for _ in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:5000/ >/dev/null; then
-              break
-            fi
-            sleep 1
-          done
-          curl --fail --silent http://127.0.0.1:5000/ >/dev/null
-          python scripts/check_solution.py "Stegano/Labo Rinthe" "Stegano/Labo Rinthe/solution/script.py"
+      - run: python scripts/test_deployments.py docker
 
   compose-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install PyYAML requests
-      - name: Validate, build and test Compose projects
-        shell: bash
-        run: |
-          set -uo pipefail
-          failed=0
-          while IFS= read -r -d '' file; do
-            echo "::group::Compose $file"
-            compose=(docker compose -f "$file")
-            if [ "$file" = "./Web/CatLab 1/docker-compose.yml" ]; then
-              compose+=(-f "$PWD/.github/ci/catlab-compose.yml")
-            fi
-
-            if ! "${compose[@]}" config --quiet; then
-              failed=1
-              echo "::error file=$file::Compose configuration is invalid"
-            elif ! config="$("${compose[@]}" config --format json)"; then
-              failed=1
-              echo "::error file=$file::Could not read Compose configuration"
-            elif ! buildable="$(printf '%s' "$config" | python -c 'import json,sys; services=json.load(sys.stdin).get("services", {}); print("yes" if services and all("build" in service for service in services.values()) else "no")')"; then
-              failed=1
-              echo "::error file=$file::Could not inspect Compose services"
-            elif [ "$buildable" = "yes" ]; then
-              if ! "${compose[@]}" up -d --build --wait --wait-timeout 120; then
-                failed=1
-                echo "::error file=$file::Compose services did not start and become ready"
-                "${compose[@]}" ps
-                "${compose[@]}" logs --no-color
-              elif [ "$file" = "./Web/CatLab 1/docker-compose.yml" ]; then
-                python scripts/check_solution.py "Web/CatLab 1" "Web/CatLab 1/solution/solve.py" || failed=1
-                python scripts/check_solution.py "Pwn/CatLab 2" "Pwn/CatLab 2/solution/solve.py" || failed=1
-              elif [ "$file" = "./Web/Vault13 Research Terminal/docker-compose.yml" ]; then
-                python scripts/check_solution.py "Web/Vault13 Research Terminal" "Web/Vault13 Research Terminal/solution/solve.py" || failed=1
-              fi
-            else
-              echo "::notice file=$file::Runtime check skipped because this project uses prebuilt images without local build contexts"
-              if ! "${compose[@]}" build; then
-                failed=1
-                echo "::error file=$file::Compose build failed"
-              fi
-            fi
-
-            "${compose[@]}" down --volumes --remove-orphans
-            echo "::endgroup::"
-          done < <(find . \( -name docker-compose.yml -o -name docker-compose.yaml -o -name compose.yml -o -name compose.yaml \) -print0)
-          exit "$failed"
+      - run: python scripts/test_deployments.py compose

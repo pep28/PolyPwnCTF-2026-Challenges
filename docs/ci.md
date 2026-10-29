@@ -1,68 +1,56 @@
 # CI des challenges
 
-Le workflow `.github/workflows/validate-challenges.yml` tourne sur les pull requests et sur les pushes vers `main` et `qa-branch`.
+La pipeline tourne sur les pull requests et sur les pushes vers `main` et `qa-branch`.
 
 ## Contrôles
 
-| Job | Ce qui est vérifié |
+| Job | Vérifications |
 | --- | --- |
-| `validate` | Lecture des `challenge.yml`, champs obligatoires et types des valeurs. |
-| `docker-build` | Build des `Dockerfile` placés à côté d'un `challenge.yml`, puis démarrage et résolution de Labo Rinthe. |
-| `compose-build` | Configuration des fichiers Compose, build et démarrage des projets constructibles localement, puis résolution de CatLab 1, CatLab 2 et Vault13. |
+| `validate` | Tests de non-régression, structure des 56 manifestes, champs imbriqués et présence des fichiers distribués. |
+| `docker-build` | Build, démarrage et réponses des 11 challenges sans Compose, puis solution de Labo Rinthe. |
+| `compose-build` | Build et démarrage des six projets Compose, santé de chaque service, puis solutions de CatLab 1, CatLab 2 et Vault13. |
 
-Le validateur demande `name`, `author`, `category`, `type`, `value`, `description` et `flags`. Il contrôle aussi les types de `tags`, `files`, `hints`, `attempts`, `playbook_name` et `deploy_parameters` lorsqu'ils sont présents. Ce sont des contrôles de structure, pas une validation complète du schéma ctfcli ou du contenu des fichiers référencés.
+Les champs suivent l'[exemple ctfcli](https://github.com/CTFd/ctfcli/blob/master/ctfcli/spec/challenge-example.yml), avec les champs PolyCyber `playbook_name` et `deploy_parameters`. Le validateur vérifie les flags simples et objets, tags, topics, hints, requirements, fichiers, score dynamique, état et métadonnées de déploiement. Les clés YAML répétées sont refusées. L'ancien format Compose avec `deploy_parameters.expose` est accepté si un fichier Compose existe.
 
-Compose attend au maximum 120 secondes le démarrage des services. Les healthchecks sont pris en compte lorsqu'ils existent ; sans healthcheck, un conteneur démarré ne garantit pas que l'application répond. Pour CatLab, `.github/ci/catlab-compose.yml` ajoute les builds locaux et un healthcheck HTTP pour le service web.
+Ce validateur ne remplace pas l'installation sur CTFd : il ne vérifie pas les plugins du serveur, les références entre challenges, le calcul CFSS ou le contenu des archives. Pour Git LFS, la présence du fichier suivi est vérifiée, pas le téléchargement de son contenu.
 
-Les solutions sont lancées avec `scripts/check_solution.py`. Le script exige une sortie sans erreur et la présence d'un flag déclaré dans le manifeste. Il effectue au maximum cinq essais de 90 secondes, espacés de deux secondes.
+## Démarrage et santé
+
+`scripts/test_deployments.py` utilise `.github/ci/deployments.yml`. L'inventaire doit correspondre aux Dockerfiles et fichiers Compose placés à côté des `challenge.yml`, ainsi qu'aux challenges `zync` utilisant une image préconstruite. Un nouveau déploiement découvert sans entrée dans cet inventaire fait échouer le job. Les Dockerfiles imbriqués sont construits lorsqu'un Compose les référence ; les recettes alternatives imbriquées ne sont pas lancées séparément.
+
+Chaque service Compose doit avoir ses propres contrôles ou un healthcheck Docker. Aucun projet n'est ignoré parce qu'il utilise une image préconstruite : Docker doit pouvoir la récupérer et la démarrer.
+
+Les tests attendent au maximum 120 secondes, puis exigent deux passages réussis espacés de deux secondes. Ils vérifient les réponses HTTP, les bannières ou réponses TCP, les healthchecks Docker et certaines commandes internes. Un conteneur arrêté échoue immédiatement. Les tests couvrent aussi le backend de DNA Visualizer, les deux services de Vault13, MariaDB et SSH dans Rabb-IT, la base CatLab et son service interne.
+
+Les conteneurs sont supprimés après chaque test, y compris en cas d'erreur. Les volumes Compose sont supprimés. Exécuter ces tests dans un environnement dédié, sans services ni données de travail à conserver. Les tests utilisent les adresses du réseau Docker et ciblent un runner Linux.
+
+Les solutions sont exécutées par `scripts/check_solution.py` : sortie sans erreur et présence d'un flag du manifeste. Le script effectue au maximum cinq essais de 90 secondes. Les quatre solutions testées ne prouvent pas la résolution de tous les challenges ; les contrôles de santé vérifient leur disponibilité.
 
 ## Passage par QA
 
 1. Créer une branche de travail depuis `qa-branch`.
 2. Ouvrir une PR vers `qa-branch`.
-3. Corriger les erreurs jusqu'à ce que `validate`, `docker-build` et `compose-build` soient verts, puis fusionner.
-4. Ouvrir une PR de `qa-branch` vers `main` pour intégrer les changements validés.
+3. Corriger les erreurs jusqu'à ce que `validate`, `docker-build` et `compose-build` passent.
+4. Après la revue QA, ouvrir une PR de `qa-branch` vers `main`.
 
-Dans le fork `pep28/PolyPwnCTF-2026-Challenges`, les deux branches sont protégées par la règle [Require CI on main](https://github.com/pep28/PolyPwnCTF-2026-Challenges/rules/25928381). Elle impose une PR et les trois contrôles GitHub Actions, interdit les suppressions et les force-pushes, et ne prévoit aucun contournement. Les règles de protection sont des réglages GitHub : elles ne sont pas copiées avec le code.
+Les deux branches du fork sont protégées par la règle [Require CI on main](https://github.com/pep28/PolyPwnCTF-2026-Challenges/rules/25928381). Elle impose une PR et les trois contrôles GitHub Actions, interdit les suppressions et les force-pushes, sans contournement. Le chemin par QA est une convention documentée ; la règle ne bloque pas une PR directe vers main et n'impose pas de revue humaine. Les protections GitHub ne sont pas copiées avec le code.
 
-## Tester localement
+## Tester
 
-Depuis la racine du dépôt, avec Python 3.12 :
+Depuis la racine du dépôt, avec Python 3.12 et Docker Compose :
 
 ```sh
 python -m pip install PyYAML requests
+python -m unittest discover -s tests
 python scripts/validate_challenges.py
+python scripts/test_deployments.py docker
+python scripts/test_deployments.py compose
 ```
 
-Pour reproduire les tests CatLab avec Docker et Compose :
+Pour un nouveau service, ajouter ses contrôles dans `.github/ci/deployments.yml`. Utiliser une route HTTP normale et son code attendu, une réponse TCP stable ou une commande interne qui échoue si le service n'est pas prêt. Ajouter un test pour chaque service, même sans port publié. Les ports publiés fixes sont réservés aux scripts de solution qui en ont besoin.
 
-```sh
-docker compose -f "Web/CatLab 1/docker-compose.yml" -f .github/ci/catlab-compose.yml up -d --build --wait --wait-timeout 120
-python scripts/check_solution.py "Web/CatLab 1" "Web/CatLab 1/solution/solve.py"
-python scripts/check_solution.py "Pwn/CatLab 2" "Pwn/CatLab 2/solution/solve.py"
-docker compose -f "Web/CatLab 1/docker-compose.yml" -f .github/ci/catlab-compose.yml down --volumes --remove-orphans
-```
+## Résultats et intégration
 
-La dernière commande supprime les conteneurs et les volumes de cette instance de test. Utiliser une instance dédiée si des données locales doivent être conservées.
+La [PR de test #2](https://github.com/pep28/PolyPwnCTF-2026-Challenges/pull/2) a confirmé qu'un manifeste invalide bloque la fusion. Les contrôles de démarrage et la validation renforcée sont dans la [PR #5](https://github.com/pep28/PolyPwnCTF-2026-Challenges/pull/5).
 
-## En cas d'échec
-
-Ouvrir le job en échec dans l'onglet Actions. `validate` indique le fichier et le champ concernés. Pour Docker, lire l'erreur de build ou les logs du service. Pour une solution, vérifier que le service est prêt, que le script fonctionne sans saisie interactive et que sa sortie correspond au flag du manifeste. Corriger la branche de travail et pousser un nouveau commit relance la CI de la PR.
-
-## Couverture et limites
-
-- Les 56 manifestes présents lors de la mise en place passent la validation. Les 16 Dockerfiles à la racine des challenges sont construits et les six projets Compose démarrent dans la CI du fork.
-- Quatre solutions sont exécutées : CatLab 1, CatLab 2, Vault13 et Labo Rinthe. Les autres ne sont pas encore couvertes par un test de résolution.
-- Un projet Compose dont au moins un service n'a pas de build local est vérifié et ses builds disponibles sont lancés, mais son démarrage est ignoré avec un message explicite.
-- Un `Dockerfile` imbriqué n'est pas construit automatiquement par `docker-build` ; il doit être référencé par un projet Compose pour être couvert par ce workflow.
-- Cette CI teste les challenges sur les runners GitHub. Elle ne déploie pas l'infrastructure PolyCyber.
-
-## Vérification du blocage
-
-Le 27 octobre 2026, la [PR de test #2](https://github.com/pep28/PolyPwnCTF-2026-Challenges/pull/2) a introduit un manifeste temporaire dont `value` était une chaîne. Le job `validate` a échoué avec `value doit être un entier.` et GitHub a placé la PR dans l'état `blocked`.
-
-Résultats : [exécution du test négatif](https://github.com/pep28/PolyPwnCTF-2026-Challenges/actions/runs/40445100021). La [CI initiale sur main](https://github.com/pep28/PolyPwnCTF-2026-Challenges/actions/runs/40443277868) avait passé les trois contrôles.
-
-## Intégration chez PolyCyber
-
-Ouvrir une PR depuis le fork vers le dépôt officiel pour proposer les fichiers du workflow, les scripts, les corrections de challenges et cette documentation. Un administrateur du dépôt officiel doit ensuite configurer les protections sur `main` et `qa-branch`, avec les contrôles `validate`, `docker-build` et `compose-build` provenant de GitHub Actions, puis reproduire le test de blocage. Aucun de ces réglages du dépôt officiel n'est appliqué depuis ce fork.
+Cette CI teste les challenges sur les runners GitHub. Elle ne déploie pas l'infrastructure PolyCyber. L'intégration au dépôt officiel nécessite une revue de l'équipe et une PR ; ses protections doivent être configurées par un administrateur.

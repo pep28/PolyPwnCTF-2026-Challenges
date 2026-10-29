@@ -25,7 +25,7 @@ description: |-
 flags:
 - POLYCYBER{anydesk}
 
-file:
+files:
 - ./lab_attack_artifacts.7z
 
 tags:
