@@ -33,7 +33,7 @@ def integer(value):
     return type(value) is int and value >= 0
 
 
-def validate(path):
+def validate(path, polycyber=True):
     errors = []
     try:
         data = yaml.load(path.read_text(encoding='utf-8'), Loader=Loader)
@@ -115,7 +115,7 @@ def validate(path):
             errors.append('extra doit définir initial, decay > 0 et minimum pour un challenge dynamic.')
         elif extra['minimum'] > extra['initial']:
             errors.append('extra.minimum ne peut pas dépasser extra.initial.')
-    if data.get('type') == 'zync' or 'deploy_parameters' in data:
+    if polycyber and (data.get('type') == 'zync' or 'deploy_parameters' in data):
         legacy_compose = 'playbook_name' not in data and isinstance(data.get('deploy_parameters'), dict) and 'expose' in data['deploy_parameters']
         if not legacy_compose and not text(data.get('playbook_name')):
             errors.append('playbook_name doit être du texte non vide.')
