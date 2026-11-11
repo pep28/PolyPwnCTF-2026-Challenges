@@ -4,7 +4,7 @@ Cette branche prépare un workflow réutilisable dans `.github/workflows/challen
 
 Le workflow récupère le dépôt appelant et le code de la CI séparément. Il repère les challenges modifiés, les teste en parallèle et fournit un résultat global stable. Pour chaque challenge, il valide le manifeste, contrôle les versions des images, construit et démarre les services détectés, puis cherche une solution `solution/solve.py` ou `solution/solve.sh`. Le flag de sortie peut être statique ou une expression régulière.
 
-La branche est une étape de développement. L'adresse `pep28/PolyPwnCTF-2026-Challenges@ci/generic-shared` est provisoire et doit être remplacée par le dépôt central avant distribution. Le workflow récupère pour l'instant ses scripts sur la branche de développement : il faudra fixer ensemble la version du workflow et celle des scripts à un commit ou à une version publiée pour éviter tout décalage.
+La branche est une étape de développement. L'adresse `pep28/PolyPwnCTF-2026-Challenges@ci/generic-shared` est provisoire et doit être remplacée par le dépôt central avant distribution. Le workflow récupère ses scripts à un commit précis. Lors d'une modification des scripts, leur commit doit être mis à jour dans le workflow, puis l'appelant doit référencer le commit du nouveau workflow.
 
 Les déclencheurs se définissent dans le dépôt appelant. Pour les conserver sur le fork 2026 :
 
@@ -23,7 +23,7 @@ jobs:
 
 ## À terminer avant adoption
 
-- Tester le workflow sur GitHub Actions avec des challenges des éditions 2025 et 2026. Docker n'était pas disponible dans l'environnement de développement.
+- Tester le workflow sur GitHub Actions avec des challenges des éditions 2025 et 2026. Un challenge Docker créé pour le test a réussi sur GitHub Actions, mais Docker n'était pas disponible dans l'environnement local.
 - Prévoir les ports issus des manifestes et les services Compose sans port publié, les tests de santé spécifiques, les stacks partagées et les overrides nécessaires.
 - Prendre en charge les définitions Compose intégrées aux manifestes, les arguments `FROM` et les images construites par plusieurs Dockerfiles. Valider l'accès aux registres réels.
 - Migrer les solutions existantes vers `solution/solve.*` et tester leurs dépendances ainsi que leurs cibles. Une solution absente est signalée comme ignorée.
