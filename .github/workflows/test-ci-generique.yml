@@ -1,0 +1,9 @@
+name: Test CI générique
+on:
+  push:
+    branches: [ci/test-generic-shared]
+permissions:
+  contents: read
+jobs:
+  ci:
+    uses: pep28/PolyPwnCTF-2026-Challenges/.github/workflows/challenge-ci.yml@ci/generic-shared

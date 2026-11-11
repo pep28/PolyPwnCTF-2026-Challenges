@@ -1,0 +1,8 @@
+name: Test CI
+author: CI
+category: Test
+type: standard
+value: 1
+description: Challenge temporaire pour tester la CI.
+flags:
+  - 'flag{ci_test}'
