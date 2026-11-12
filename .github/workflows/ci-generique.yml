@@ -10,5 +10,3 @@ permissions:
 jobs:
   ci:
     uses: pep28/PolyPwnCTF-2026-Challenges/.github/workflows/challenge-ci.yml@bc84d3de5b504651d1465a41e62b5b1dd1e1d601
-    with:
-      tous: true
