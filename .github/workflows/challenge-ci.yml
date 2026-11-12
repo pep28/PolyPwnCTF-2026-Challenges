@@ -35,6 +35,10 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install PyYAML==6.0.2
+      - name: Tester le code de la CI
+        env:
+          PYTHONPATH: ci
+        run: python -m unittest discover -s ci/tests
       - id: challenges
         env:
           TOUS: ${{ inputs.tous }}
