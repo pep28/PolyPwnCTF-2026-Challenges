@@ -1,8 +1,0 @@
-name: image-absente
-author: CI
-category: Test
-type: standard
-value: 1
-description: Test temporaire.
-flags:
-  - 'flag{attendu}'

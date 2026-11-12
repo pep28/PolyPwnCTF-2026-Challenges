@@ -1,8 +1,0 @@
-name: solution-plantee
-author: CI
-category: Test
-type: standard
-value: 1
-description: Test temporaire.
-flags:
-  - 'flag{attendu}'
