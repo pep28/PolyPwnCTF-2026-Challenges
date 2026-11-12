@@ -89,6 +89,15 @@ def dockerfile_images(path):
                 stages.add(stage.lower())
 
 
+def dockerfile_ports(path):
+    ports = []
+    for line in path.read_text(encoding='utf-8').splitlines():
+        match = re.match(r'^\s*EXPOSE\s+(.+?)\s*$', line, re.I)
+        if match:
+            ports.extend(compose_ports({}, match.group(1).split()))
+    return sorted(set(ports))
+
+
 def probe(container, host, check):
     if 'command' in check:
         run(['docker', 'exec', container, *check['command']], capture=True, timeout=10)
@@ -279,7 +288,10 @@ def main():
             container = run(['docker', 'run', '-d', '--name', name, image], capture=True)
             containers.append(container)
             info = json.loads(run(['docker', 'inspect', container], capture=True))[0]
-            ports = sorted(set(manifest_ports(stack_data) + compose_ports({}, (info['Config'].get('ExposedPorts') or {}).keys())))
+            exposed = dockerfile_ports(dockerfile) if dockerfile.is_file() else []
+            if not exposed and not manifest_ports(stack_data):
+                exposed = compose_ports({}, (info['Config'].get('ExposedPorts') or {}).keys())
+            ports = sorted(set(manifest_ports(stack_data) + exposed))
             etape = 'santé du service'
             host = wait(container, ports, config.get('checks', {}).get('app', []))
             port = ports[0] if ports else None

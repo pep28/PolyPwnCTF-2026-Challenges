@@ -47,6 +47,10 @@ class TestCI(unittest.TestCase):
         self.assertEqual(challenge.compose_ports({'ports': [{'target': 5000}], 'expose': ['80/tcp', '53/udp']}, ['8080/tcp']), [80, 5000, 8080])
         self.assertEqual(challenge.service_ports({'deploy_parameters': {}}, 'web'), [])
         self.assertEqual(challenge.service_ports({'deploy_parameters': {'expose': [{'service': 'web', 'port': 8080, 'type': 'http'}]}}, 'web'), [8080])
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'Dockerfile'
+            path.write_text('FROM python:3.12\nEXPOSE 80 8080/tcp 53/udp\n')
+            self.assertEqual(challenge.dockerfile_ports(path), [80, 8080])
 
     def test_image_non_accessible(self):
         with patch.object(challenge, 'run', side_effect=RuntimeError('introuvable')):
