@@ -1,2 +1,11 @@
 service: haproxy
 port: 8080
+checks:
+  haproxy:
+  - port: 8080
+    http: /
+    contains: VAULT-13
+  backend:
+  - port: 5000
+    http: /
+    contains: VAULT-13

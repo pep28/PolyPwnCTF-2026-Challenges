@@ -1,0 +1,7 @@
+checks:
+  app:
+  - port: 80
+    http: /
+  - port: 80
+    http: /api/
+    contains: Welcome to the DNA Molecule Generator!

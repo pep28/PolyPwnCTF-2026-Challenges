@@ -1,0 +1,4 @@
+checks:
+  app:
+  - port: 5000
+    http: /

@@ -1,0 +1,4 @@
+checks:
+  app:
+  - port: 8888
+    contains: Welcome to NSSHA

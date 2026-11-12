@@ -1,0 +1,4 @@
+checks:
+  app:
+  - port: 80
+    http: /

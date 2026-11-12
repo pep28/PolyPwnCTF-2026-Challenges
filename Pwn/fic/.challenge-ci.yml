@@ -1,0 +1,4 @@
+checks:
+  pwn:
+  - port: 1000
+    contains: 'Enter your message:'

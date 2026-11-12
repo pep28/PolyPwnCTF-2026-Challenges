@@ -1,0 +1,5 @@
+checks:
+  pwn:
+  - port: 1001
+    send: "ci\n\0"
+    contains: ci
