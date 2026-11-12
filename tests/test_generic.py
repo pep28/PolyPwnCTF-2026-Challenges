@@ -12,6 +12,10 @@ import discover
 
 
 class TestCI(unittest.TestCase):
+    def test_sortie_standard_separee_des_avertissements(self):
+        command = [sys.executable, '-c', 'import sys; print("{}") ; print("avertissement", file=sys.stderr)']
+        self.assertEqual(challenge.run(command, capture=True), '{}')
+
     def test_images_versionnees(self):
         with patch.object(challenge, 'run') as run:
             challenge.check_image('python:3.12')

@@ -18,9 +18,9 @@ COMPOSE = ('compose.yaml', 'compose.yml', 'docker-compose.yaml', 'docker-compose
 
 def run(args, cwd=None, capture=False, timeout=600, env=None):
     result = subprocess.run(args, cwd=cwd, text=True, stdout=subprocess.PIPE if capture else None,
-                            stderr=subprocess.STDOUT if capture else None, timeout=timeout, env=env)
+                            stderr=subprocess.PIPE if capture else None, timeout=timeout, env=env)
     if result.returncode:
-        raise RuntimeError(f"{' '.join(args[:4])} : {result.stdout or 'commande échouée'}")
+        raise RuntimeError(f"{' '.join(args[:4])} : {(result.stdout or '') + (result.stderr or '') or 'commande échouée'}")
     return result.stdout.strip() if capture else ''
 
 
