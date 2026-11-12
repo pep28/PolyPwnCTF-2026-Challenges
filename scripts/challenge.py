@@ -15,6 +15,8 @@ from validate_challenges import validate
 
 
 COMPOSE = ('compose.yaml', 'compose.yml', 'docker-compose.yaml', 'docker-compose.yml')
+etape = 'manifeste'
+logs = []
 
 
 def run(args, cwd=None, capture=False, timeout=600, env=None):
@@ -173,6 +175,7 @@ def solution(directory, data, host, port, config=None):
 
 
 def main():
+    global etape
     root = (Path(os.environ['GITHUB_WORKSPACE']) / 'challenges').resolve()
     directory = (root / os.environ['CHEMIN']).resolve()
     if not directory.is_relative_to(root) or not (directory / 'challenge.yml').is_file():
@@ -183,6 +186,7 @@ def main():
         raise ValueError('\n'.join(errors))
     data = yaml.safe_load(manifest.read_text(encoding='utf-8'))
     print('Manifeste valide.', flush=True)
+    etape = 'détection du déploiement'
     config_file = directory / '.challenge-ci.yml'
     config = yaml.safe_load(config_file.read_text(encoding='utf-8')) if config_file.is_file() else {}
     if not isinstance(config, dict):
@@ -206,12 +210,14 @@ def main():
     if not compose_file and not dockerfile.is_file() and not image:
         if data.get('type') == 'zync':
             raise ValueError('Déploiement déclaré sans recette ou image identifiable.')
+        etape = 'solution'
         solution(directory, data, None, None, config)
         return
     name = 'ci-' + str(os.getpid())
     containers = []
     compose = None
     try:
+        etape = 'images'
         if compose_file:
             compose = ['docker', 'compose', '-p', name, '--project-directory', str(stack), '-f', str(compose_file)]
             if config.get('compose_override'):
@@ -232,7 +238,9 @@ def main():
                     check_image(service['image'])
                 else:
                     raise ValueError('Service Compose sans image ni build.')
+            etape = 'build et démarrage'
             run(compose + ['up', '-d', '--build'], cwd=stack, timeout=1200)
+            etape = 'santé des services'
             addresses = []
             for name_service, service in definition['services'].items():
                 ids = run(compose + ['ps', '-q', name_service], cwd=stack, capture=True).splitlines()
@@ -252,22 +260,28 @@ def main():
         else:
             if dockerfile.is_file():
                 dockerfile_images(dockerfile)
+                etape = 'build'
                 run(['docker', 'build', '-t', name, str(stack)], timeout=1200)
                 image = name
             else:
                 check_image(image)
                 run(['docker', 'pull', image], timeout=300)
+            etape = 'démarrage'
             container = run(['docker', 'run', '-d', '--name', name, image], capture=True)
             containers.append(container)
             info = json.loads(run(['docker', 'inspect', container], capture=True))[0]
             ports = sorted(set(manifest_ports(stack_data) + compose_ports({}, (info['Config'].get('ExposedPorts') or {}).keys())))
+            etape = 'santé du service'
             host = wait(container, ports, config.get('checks', {}).get('app', []))
             port = ports[0] if ports else None
         print('Démarrage vérifié.', flush=True)
+        etape = 'solution'
         solution(directory, data, host, config.get('port', port), config)
     finally:
         for container in containers:
-            subprocess.run(['docker', 'logs', '--tail', '50', container], check=False)
+            result = subprocess.run(['docker', 'logs', '--tail', '50', container], capture_output=True, text=True, check=False)
+            logs.append((result.stdout + result.stderr)[-5000:])
+            print(logs[-1])
         if compose:
             subprocess.run(compose + ['down', '--volumes', '--remove-orphans'], cwd=stack, check=False)
         elif containers:
@@ -284,5 +298,7 @@ if __name__ == '__main__':
         summary = os.environ.get('GITHUB_STEP_SUMMARY')
         if summary:
             with open(summary, 'a', encoding='utf-8') as output:
-                output.write(f"### Échec : {os.environ.get('CHEMIN', '')}\n\n{exc}\n")
+                output.write(f"### Échec : {os.environ.get('CHEMIN', '')}\n\nÉtape : {etape}\n\n{exc}\n")
+                if logs:
+                    output.write('\nDerniers journaux :\n\n```text\n' + '\n'.join(logs) + '\n```\n')
         sys.exit(1)
