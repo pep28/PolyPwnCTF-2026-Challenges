@@ -9,4 +9,4 @@ permissions:
   pull-requests: write
 jobs:
   ci:
-    uses: pep28/PolyPwnCTF-2026-Challenges/.github/workflows/challenge-ci.yml@517bc0687fca5272c84872003f7b65c0e75ef2c0
+    uses: pep28/PolyPwnCTF-2026-Challenges/.github/workflows/challenge-ci.yml@646b61547c8bbfa6fc20cb4a84d5cfe371be8d09

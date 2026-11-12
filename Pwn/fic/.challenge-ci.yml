@@ -2,3 +2,4 @@ checks:
   pwn:
   - port: 1000
     contains: 'Enter your message:'
+ignore_solution: La solution existante est interactive et doit être adaptée pour afficher le flag automatiquement.
