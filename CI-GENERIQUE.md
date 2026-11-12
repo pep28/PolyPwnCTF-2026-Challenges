@@ -29,7 +29,7 @@ jobs:
 - Vérifier sur les autres challenges les ports des manifestes et Compose, les tests de santé spécifiques, les stacks partagées et les overrides.
 - Prendre en charge les définitions Compose intégrées aux manifestes, les arguments `FROM` et les images construites par plusieurs Dockerfiles. Valider l'accès aux registres réels.
 - Migrer les solutions existantes vers `solution/solve.*` et tester leurs dépendances ainsi que leurs cibles. Une solution absente est signalée comme ignorée.
-- Vérifier la mise à jour du commentaire de PR en cas d'échec et les permissions pour les PR provenant de forks.
+- Vérifier les permissions du commentaire de PR pour les contributions provenant de forks. La création et la mise à jour du commentaire ont été testées sur une PR du fork.
 - Épingler les images existantes et corriger les références privées avec l'équipe. Supprimer `deployments.yml` seulement après avoir retrouvé la couverture de la CI actuelle.
 - Publier le code central dans un dépôt accessible aux projets utilisateurs et mettre à jour les appels et les protections GitHub après validation.
 
@@ -39,6 +39,8 @@ jobs:
 python -m pip install PyYAML==6.0.2
 python -m unittest discover -s tests
 ```
+
+Les tests 2025 ont été exécutés en lecture seule : Yoda Calculator passe ; Order66 est refusé pour son image flottante ; Interstellar2 échoue sur son paquet Debian d'origine et passe avec le correctif disponible dans `ci/interstellar-2025`.
 
 ## Options par challenge
 

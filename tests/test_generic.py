@@ -98,6 +98,8 @@ class TestCI(unittest.TestCase):
             subprocess.run(['git', '-C', str(root), 'commit', '-qm', 'changement'], check=True)
             self.assertEqual(discover.discover(root, {'before': base}), ['Web/Autre', 'Web/Un challenge'])
             self.assertEqual(len(discover.discover(root, {'before': '0' * 40})), 2)
+            with patch.dict(os.environ, {'TOUS': 'true'}):
+                self.assertEqual(len(discover.discover(root, {'before': base})), 2)
 
 
 if __name__ == '__main__':

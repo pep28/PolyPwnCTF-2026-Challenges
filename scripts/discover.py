@@ -11,6 +11,8 @@ def discover(root, event):
     files = sorted(root.rglob('challenge.yml'))
     if not files:
         raise ValueError('Aucun challenge.yml trouvé.')
+    if os.environ.get('TOUS') == 'true':
+        return [str(path.parent.relative_to(root)) for path in files]
     if event.get('pull_request'):
         base = event['pull_request']['base']['sha']
     else:
