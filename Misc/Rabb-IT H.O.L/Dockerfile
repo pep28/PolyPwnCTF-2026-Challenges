@@ -1,4 +1,4 @@
-FROM debian:stable-slim
+FROM debian:stable-slim@sha256:13e0a2e78aa0554ad5ff66e4e260c6dbcdff807eb1f39d43b9fb0288aae88b04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Use minimal install + no recommends for smallest footprint

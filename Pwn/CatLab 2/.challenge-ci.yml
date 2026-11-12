@@ -1,0 +1,3 @@
+stack: Web/CatLab 1
+service: web
+port: 80

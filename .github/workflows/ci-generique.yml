@@ -1,0 +1,12 @@
+name: CI générique
+on:
+  pull_request:
+  push:
+    branches: [main, qa-branch]
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+jobs:
+  ci:
+    uses: pep28/PolyPwnCTF-2026-Challenges/.github/workflows/challenge-ci.yml@6d23cf5b4157dc4e101f9fa4fdb3cb543bdad771

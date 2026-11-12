@@ -1,0 +1,26 @@
+import os
+import requests
+
+host = os.getenv('CHALLENGE_HOST', '127.0.0.1')
+port = os.getenv('CHALLENGE_PORT', '5000')
+BASE_URL = f'http://{host}:{port}'
+
+def main():
+	url = f"{BASE_URL}/begin"
+	flag = [""] * 42
+	while True:
+		response = requests.get(url, allow_redirects=False)
+		if "/begin" not in url:
+			body = response.json()
+			for key, value in body.items():
+				flag[int(key)] = value
+
+		location = response.headers["Location"]
+		if location == "/":
+			break
+		url = f"{BASE_URL}{location}"
+	print(''.join(flag))
+
+
+if __name__ == '__main__':
+	main()
