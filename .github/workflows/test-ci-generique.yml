@@ -4,6 +4,8 @@ on:
     branches: [ci/test-generic-shared]
 permissions:
   contents: read
+  actions: read
+  pull-requests: write
 jobs:
   ci:
     uses: pep28/PolyPwnCTF-2026-Challenges/.github/workflows/challenge-ci.yml@ci/generic-shared
