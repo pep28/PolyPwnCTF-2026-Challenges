@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
+import os
 import base64
 import hashlib
 import requests
 
-BASE_URL = "http://localhost:8000"
+host = os.getenv('CHALLENGE_HOST', 'localhost')
+port = os.getenv('CHALLENGE_PORT', '8000')
+BASE_URL = f'http://{host}:{port}'
 
 def register(username: str, password: str) -> requests.Session:
     """Register a new user and return an authenticated session."""
