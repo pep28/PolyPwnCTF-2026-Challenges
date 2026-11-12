@@ -29,6 +29,22 @@ class TestCI(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'aucun flag'):
                 challenge.solution(root, {'flags': ['flag{autre}']}, None, None)
 
+    def test_flag_sans_distinction_de_casse(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'solution').mkdir()
+            (root / 'solution' / 'solve.py').write_text("print('FLAG{TEST}')")
+            challenge.solution(root, {'flags': [{'type': 'static', 'content': 'flag{test}', 'data': 'case_insensitive'}]}, None, None)
+
+    def test_ports_manifestes_et_compose(self):
+        self.assertEqual(challenge.manifest_ports({'deploy_parameters': {'http_port': 5000, 'published_ports': [8888, '80:8080']}}), [5000, 8080, 8888])
+        self.assertEqual(challenge.compose_ports({'ports': [{'target': 5000}], 'expose': ['80/tcp', '53/udp']}, ['8080/tcp']), [80, 5000, 8080])
+
+    def test_image_non_accessible(self):
+        with patch.object(challenge, 'run', side_effect=RuntimeError('introuvable')):
+            with self.assertRaisesRegex(ValueError, 'introuvable ou privée'):
+                challenge.check_image('python:3.12')
+
     def test_detection_fichier_imbrique_et_espaces(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
