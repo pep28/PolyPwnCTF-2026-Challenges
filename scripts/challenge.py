@@ -1,4 +1,5 @@
 import json
+import http.client
 import os
 from pathlib import Path
 import re
@@ -77,9 +78,31 @@ def dockerfile_images(path):
                 stages.add(stage.lower())
 
 
-def wait(container, ports):
+def probe(container, host, check):
+    if 'command' in check:
+        run(['docker', 'exec', container, *check['command']], capture=True, timeout=10)
+    elif 'http' in check:
+        conn = http.client.HTTPConnection(host, check['port'], timeout=5)
+        try:
+            conn.request('GET', check['http'])
+            response = conn.getresponse()
+            body = response.read().decode(errors='replace')
+            if response.status != check.get('status', 200) or check.get('contains', '') not in body:
+                raise RuntimeError(f"Réponse HTTP inattendue : {response.status}")
+        finally:
+            conn.close()
+    else:
+        with socket.create_connection((host, check['port']), timeout=5) as conn:
+            if check.get('send'):
+                conn.sendall(check['send'].encode())
+            if check.get('contains') and check['contains'].encode() not in conn.recv(65536):
+                raise RuntimeError('Réponse TCP inattendue.')
+
+
+def wait(container, ports, checks=()):
     deadline = time.monotonic() + 120
     error = 'Service non disponible'
+    successes = 0
     while time.monotonic() < deadline:
         info = json.loads(run(['docker', 'inspect', container], capture=True))[0]
         state = info['State']
@@ -96,9 +119,15 @@ def wait(container, ports):
             for port in ports:
                 with socket.create_connection((address, port), timeout=2):
                     pass
-            return address
-        except (OSError, RuntimeError) as exc:
+            for check in checks:
+                probe(container, address, check)
+            successes += 1
+            if successes == 2:
+                return address
+            time.sleep(2)
+        except (OSError, RuntimeError, subprocess.SubprocessError, http.client.HTTPException) as exc:
             error = str(exc)
+            successes = 0
             time.sleep(2)
     raise RuntimeError(f'Délai de démarrage dépassé : {error}')
 
@@ -213,7 +242,7 @@ def main():
                 info = json.loads(run(['docker', 'inspect', ids[0]], capture=True))[0]
                 exposed = (info['Config'].get('ExposedPorts') or {}).keys()
                 ports = compose_ports(service, exposed)
-                address = wait(ids[0], ports)
+                address = wait(ids[0], ports, config.get('checks', {}).get(name_service, []))
                 addresses.append((name_service, address, ports[0] if ports else None))
             target = config.get('service')
             if target and target not in [item[0] for item in addresses]:
@@ -232,7 +261,7 @@ def main():
             containers.append(container)
             info = json.loads(run(['docker', 'inspect', container], capture=True))[0]
             ports = sorted(set(manifest_ports(stack_data) + compose_ports({}, (info['Config'].get('ExposedPorts') or {}).keys())))
-            host = wait(container, ports)
+            host = wait(container, ports, config.get('checks', {}).get('app', []))
             port = ports[0] if ports else None
         print('Démarrage vérifié.', flush=True)
         solution(directory, data, host, config.get('port', port), config)

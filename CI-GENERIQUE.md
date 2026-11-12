@@ -23,8 +23,8 @@ jobs:
 
 ## À terminer avant adoption
 
-- Tester le workflow sur GitHub Actions avec des challenges des éditions 2025 et 2026. Un challenge Docker créé pour le test a réussi sur GitHub Actions, mais Docker n'était pas disponible dans l'environnement local.
-- Prévoir les ports issus des manifestes et les services Compose sans port publié, les tests de santé spécifiques, les stacks partagées et les overrides nécessaires.
+- Tester le workflow sur les autres challenges des éditions 2025 et 2026. Labo Rinthe, Vault13 et les deux CatLab ont passé leurs tests de déploiement et de solution sur GitHub Actions, dans une branche de test.
+- Vérifier sur les autres challenges les ports des manifestes et Compose, les tests de santé spécifiques, les stacks partagées et les overrides.
 - Prendre en charge les définitions Compose intégrées aux manifestes, les arguments `FROM` et les images construites par plusieurs Dockerfiles. Valider l'accès aux registres réels.
 - Migrer les solutions existantes vers `solution/solve.*` et tester leurs dépendances ainsi que leurs cibles. Une solution absente est signalée comme ignorée.
 - Ajouter le commentaire de PR mis à jour et enrichir le résumé d'échec avec l'étape et les journaux utiles. Vérifier les permissions pour les PR provenant de forks.
@@ -37,3 +37,7 @@ jobs:
 python -m pip install PyYAML==6.0.2
 python -m unittest discover -s tests
 ```
+
+## Options par challenge
+
+Le fichier facultatif `.challenge-ci.yml` peut définir `stack` (chemin de la stack partagée depuis la racine), `service` et `port` (cible de la solution), `compose_override` (chemin relatif au challenge) et `ignore_solution` (raison de l'absence de test). `checks` peut définir des contrôles `http`, TCP ou `command` par service. Ces options sont en cours de validation et ne remplacent pas encore les contrôles de la CI existante.

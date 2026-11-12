@@ -3,8 +3,10 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 import challenge
@@ -49,6 +51,29 @@ class TestCI(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'introuvable ou privée'):
                 challenge.check_image('python:3.12')
 
+    def test_verification_http(self):
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b'pret')
+
+            def log_message(self, *args):
+                pass
+
+        server = HTTPServer(('127.0.0.1', 0), Handler)
+        thread = threading.Thread(target=server.serve_forever)
+        thread.start()
+        try:
+            check = {'port': server.server_port, 'http': '/', 'contains': 'pret'}
+            challenge.probe('id', '127.0.0.1', check)
+            with self.assertRaises(RuntimeError):
+                challenge.probe('id', '127.0.0.1', check | {'contains': 'absent'})
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join()
+
     def test_detection_fichier_imbrique_et_espaces(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -58,13 +83,14 @@ class TestCI(unittest.TestCase):
             for name in ('Web/Un challenge', 'Web/Autre'):
                 (root / name).mkdir(parents=True)
                 (root / name / 'challenge.yml').write_text('name: test\n')
+            (root / 'Web/Autre/.challenge-ci.yml').write_text('stack: Web/Un challenge\n')
             subprocess.run(['git', '-C', str(root), 'add', '.'], check=True)
             subprocess.run(['git', '-C', str(root), 'commit', '-qm', 'base'], check=True)
             base = subprocess.check_output(['git', '-C', str(root), 'rev-parse', 'HEAD'], text=True).strip()
             (root / 'Web/Un challenge/nouveau').write_text('test')
             subprocess.run(['git', '-C', str(root), 'add', '.'], check=True)
             subprocess.run(['git', '-C', str(root), 'commit', '-qm', 'changement'], check=True)
-            self.assertEqual(discover.discover(root, {'before': base}), ['Web/Un challenge'])
+            self.assertEqual(discover.discover(root, {'before': base}), ['Web/Autre', 'Web/Un challenge'])
             self.assertEqual(len(discover.discover(root, {'before': '0' * 40})), 2)
 
 

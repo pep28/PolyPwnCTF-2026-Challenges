@@ -2,6 +2,9 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
+
+import yaml
 
 
 def discover(root, event):
@@ -22,8 +25,17 @@ def discover(root, event):
     for item in changed:
         if item.name == 'challenge.yml' and not (root / item).exists() and (root / item.parent).is_dir():
             raise ValueError(f'Manifeste supprimé alors que le dossier existe encore : {item}')
-    return [str(path.parent.relative_to(root)) for path in files
-            if any(item == path.parent.relative_to(root) or path.parent.relative_to(root) in item.parents for item in changed)]
+    selected = set()
+    for path in files:
+        directory = path.parent.relative_to(root)
+        config_file = path.parent / '.challenge-ci.yml'
+        config = yaml.safe_load(config_file.read_text(encoding='utf-8')) if config_file.is_file() else {}
+        if not isinstance(config, dict):
+            raise ValueError(f'{config_file} doit être un objet YAML.')
+        stack = Path(config.get('stack', str(directory)))
+        if any(item == candidate or candidate in item.parents for item in changed for candidate in (directory, stack)):
+            selected.add(str(directory))
+    return sorted(selected)
 
 
 def main():
@@ -37,4 +49,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except (ValueError, OSError, subprocess.SubprocessError, yaml.YAMLError) as exc:
+        print(f'Échec de la détection : {exc}', file=sys.stderr)
+        sys.exit(1)
