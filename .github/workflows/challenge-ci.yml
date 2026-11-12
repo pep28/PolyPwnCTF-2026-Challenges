@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: pep28/PolyPwnCTF-2026-Challenges
-          ref: 5f1d080d41cb9720d2f32b2b3872e0309f6a259d
+          ref: fc579f5472a99e1093015c8324e2b2f615ee2a8f
           path: ci
           persist-credentials: false
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
@@ -57,7 +57,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: pep28/PolyPwnCTF-2026-Challenges
-          ref: 5f1d080d41cb9720d2f32b2b3872e0309f6a259d
+          ref: fc579f5472a99e1093015c8324e2b2f615ee2a8f
           path: ci
           persist-credentials: false
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
