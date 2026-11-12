@@ -6,6 +6,9 @@ on:
       polycyber:
         type: boolean
         default: true
+      tous:
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -25,7 +28,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: pep28/PolyPwnCTF-2026-Challenges
-          ref: 074d10b204d6c5c2b9bfc9a3612a12bf2ebd09bf
+          ref: 5f1d080d41cb9720d2f32b2b3872e0309f6a259d
           path: ci
           persist-credentials: false
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
@@ -33,6 +36,8 @@ jobs:
           python-version: '3.12'
       - run: pip install PyYAML==6.0.2
       - id: challenges
+        env:
+          TOUS: ${{ inputs.tous }}
         run: python ci/scripts/discover.py
 
   challenge:
@@ -52,7 +57,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: pep28/PolyPwnCTF-2026-Challenges
-          ref: 074d10b204d6c5c2b9bfc9a3612a12bf2ebd09bf
+          ref: 5f1d080d41cb9720d2f32b2b3872e0309f6a259d
           path: ci
           persist-credentials: false
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
@@ -94,6 +99,8 @@ jobs:
             const issue_number = context.issue.number;
             const run_id = context.runId;
             const marker = '<!-- rapport-ci-challenges -->';
+            const current = await github.rest.pulls.get({ owner, repo, pull_number: issue_number });
+            if (current.data.head.sha !== context.payload.pull_request.head.sha) return;
             const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, { owner, repo, run_id, per_page: 100 });
             const selected = jobs.filter(job => /(?:detection|challenge \()/.test(job.name));
             const lines = [];
