@@ -72,7 +72,7 @@ def service_ports(data, service):
     params = data.get('deploy_parameters') or {}
     if not isinstance(params, dict) or not isinstance(params.get('expose', []), list):
         return []
-    return [item['port'] for item in params['expose']
+    return [item['port'] for item in params.get('expose', [])
             if isinstance(item, dict) and item.get('service') == service
             and item.get('type') in ('http', 'tcp') and isinstance(item.get('port'), int)]
 

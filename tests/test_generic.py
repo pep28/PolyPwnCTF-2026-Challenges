@@ -45,6 +45,8 @@ class TestCI(unittest.TestCase):
     def test_ports_manifestes_et_compose(self):
         self.assertEqual(challenge.manifest_ports({'deploy_parameters': {'http_port': 5000, 'published_ports': [8888, '80:8080']}}), [5000, 8080, 8888])
         self.assertEqual(challenge.compose_ports({'ports': [{'target': 5000}], 'expose': ['80/tcp', '53/udp']}, ['8080/tcp']), [80, 5000, 8080])
+        self.assertEqual(challenge.service_ports({'deploy_parameters': {}}, 'web'), [])
+        self.assertEqual(challenge.service_ports({'deploy_parameters': {'expose': [{'service': 'web', 'port': 8080, 'type': 'http'}]}}, 'web'), [8080])
 
     def test_image_non_accessible(self):
         with patch.object(challenge, 'run', side_effect=RuntimeError('introuvable')):

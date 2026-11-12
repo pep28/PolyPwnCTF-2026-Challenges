@@ -16,6 +16,8 @@ on:
     branches: [main, qa-branch]
 permissions:
   contents: read
+  actions: read
+  pull-requests: write
 jobs:
   ci:
     uses: pep28/PolyPwnCTF-2026-Challenges/.github/workflows/challenge-ci.yml@ci/generic-shared
@@ -27,7 +29,7 @@ jobs:
 - Vérifier sur les autres challenges les ports des manifestes et Compose, les tests de santé spécifiques, les stacks partagées et les overrides.
 - Prendre en charge les définitions Compose intégrées aux manifestes, les arguments `FROM` et les images construites par plusieurs Dockerfiles. Valider l'accès aux registres réels.
 - Migrer les solutions existantes vers `solution/solve.*` et tester leurs dépendances ainsi que leurs cibles. Une solution absente est signalée comme ignorée.
-- Ajouter le commentaire de PR mis à jour et enrichir le résumé d'échec avec l'étape et les journaux utiles. Vérifier les permissions pour les PR provenant de forks.
+- Vérifier la mise à jour du commentaire de PR en cas d'échec et les permissions pour les PR provenant de forks.
 - Épingler les images existantes et corriger les références privées avec l'équipe. Supprimer `deployments.yml` seulement après avoir retrouvé la couverture de la CI actuelle.
 - Publier le code central dans un dépôt accessible aux projets utilisateurs et mettre à jour les appels et les protections GitHub après validation.
 
