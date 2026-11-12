@@ -1,8 +1,1 @@
-name: Test rapport
-author: CI
-category: Test
-type: standard
-value: 1
-description: Test du rapport.
-flags:
-  - 'flag{ci}'
+name: [invalide
