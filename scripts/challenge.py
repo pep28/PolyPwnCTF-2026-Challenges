@@ -68,6 +68,15 @@ def compose_ports(service, exposed=()):
     return sorted(set(ports))
 
 
+def service_ports(data, service):
+    params = data.get('deploy_parameters') or {}
+    if not isinstance(params, dict) or not isinstance(params.get('expose', []), list):
+        return []
+    return [item['port'] for item in params['expose']
+            if isinstance(item, dict) and item.get('service') == service
+            and item.get('type') in ('http', 'tcp') and isinstance(item.get('port'), int)]
+
+
 def dockerfile_images(path):
     stages = set()
     for line in path.read_text(encoding='utf-8').splitlines():
@@ -239,7 +248,7 @@ def main():
                 else:
                     raise ValueError('Service Compose sans image ni build.')
             etape = 'build et démarrage'
-            run(compose + ['up', '-d', '--build'], cwd=stack, timeout=1200)
+            print(run(compose + ['up', '-d', '--build'], cwd=stack, timeout=1200, capture=True))
             etape = 'santé des services'
             addresses = []
             for name_service, service in definition['services'].items():
@@ -249,7 +258,7 @@ def main():
                 containers.extend(ids)
                 info = json.loads(run(['docker', 'inspect', ids[0]], capture=True))[0]
                 exposed = (info['Config'].get('ExposedPorts') or {}).keys()
-                ports = compose_ports(service, exposed)
+                ports = sorted(set(compose_ports(service, exposed) + service_ports(stack_data, name_service)))
                 address = wait(ids[0], ports, config.get('checks', {}).get(name_service, []))
                 addresses.append((name_service, address, ports[0] if ports else None))
             target = config.get('service')
@@ -261,7 +270,7 @@ def main():
             if dockerfile.is_file():
                 dockerfile_images(dockerfile)
                 etape = 'build'
-                run(['docker', 'build', '-t', name, str(stack)], timeout=1200)
+                print(run(['docker', 'build', '-t', name, str(stack)], timeout=1200, capture=True))
                 image = name
             else:
                 check_image(image)
@@ -298,7 +307,7 @@ if __name__ == '__main__':
         summary = os.environ.get('GITHUB_STEP_SUMMARY')
         if summary:
             with open(summary, 'a', encoding='utf-8') as output:
-                output.write(f"### Échec : {os.environ.get('CHEMIN', '')}\n\nÉtape : {etape}\n\n{exc}\n")
+                output.write(f"### Échec : {os.environ.get('CHEMIN', '')}\n\nÉtape : {etape}\n\n{str(exc)[-5000:]}\n")
                 if logs:
                     output.write('\nDerniers journaux :\n\n```text\n' + '\n'.join(logs) + '\n```\n')
         sys.exit(1)
