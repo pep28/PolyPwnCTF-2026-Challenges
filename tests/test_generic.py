@@ -42,6 +42,13 @@ class TestCI(unittest.TestCase):
             (root / 'solution' / 'solve.py').write_text("print('FLAG{TEST}')")
             challenge.solution(root, {'flags': [{'type': 'static', 'content': 'flag{test}', 'data': 'case_insensitive'}]}, None, None)
 
+    def test_documentation_solution_ignoree(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'solution').mkdir()
+            (root / 'solution/solve.md').write_text('Étapes manuelles')
+            challenge.solution(root, {'flags': ['flag{test}']}, None, None)
+
     def test_ports_manifestes_et_compose(self):
         self.assertEqual(challenge.manifest_ports({'deploy_parameters': {'http_port': 5000, 'published_ports': [8888, '80:8080']}}), [5000, 8080, 8888])
         self.assertEqual(challenge.compose_ports({'ports': [{'target': 5000}], 'expose': ['80/tcp', '53/udp']}, ['8080/tcp']), [80, 5000, 8080])

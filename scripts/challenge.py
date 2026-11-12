@@ -157,7 +157,8 @@ def solution(directory, data, host, port, config=None):
     if config.get('ignore_solution'):
         print(f"Solution ignorée : {config['ignore_solution']}")
         return
-    scripts = sorted((directory / 'solution').glob('solve.*'))
+    scripts = sorted(path for path in (directory / 'solution').glob('solve.*')
+                     if path.suffix.lower() not in ('.md', '.txt'))
     if not scripts:
         print('Solution ignorée : aucun fichier solution/solve.*.')
         return
