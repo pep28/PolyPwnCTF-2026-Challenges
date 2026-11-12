@@ -1,0 +1,36 @@
+name: Test moteur 2025
+on:
+  push:
+    branches: [ci/test-generic-shared]
+    paths: [.github/workflows/test-2025-generique.yml]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        chemin: ['Misc/Yoda Calculator', 'Programming/Order66', 'Cryptography/Interstellar2']
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: polycyber/PolyPwnCTF-2025-Challenges
+          ref: 606c0158e7cbffa5bc4f65c7a82e5edbccfe2ec4
+          path: challenges
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: pep28/PolyPwnCTF-2026-Challenges
+          ref: 4db0102bae4ea5a2d4a1fdc6707b9d153158b91f
+          path: ci
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - run: pip install PyYAML==6.0.2
+      - env:
+          CHEMIN: ${{ matrix.chemin }}
+          POLYCYBER: 'true'
+        run: python ci/scripts/challenge.py
