@@ -77,6 +77,12 @@ def service_ports(data, service):
             and item.get('type') in ('http', 'tcp') and isinstance(item.get('port'), int)]
 
 
+def selected_ports(service, declared, configured, inherited):
+    if not declared and not configured and not compose_ports(service):
+        declared = inherited
+    return sorted(set(compose_ports(service, declared) + configured))
+
+
 def dockerfile_images(path):
     stages = set()
     for line in path.read_text(encoding='utf-8').splitlines():
@@ -245,7 +251,8 @@ def main():
                     raise ValueError('Override Compose introuvable ou hors du dépôt.')
                 compose += ['-f', str(override)]
             definition = json.loads(run(compose + ['config', '--format', 'json'], cwd=stack, capture=True))
-            for service in definition['services'].values():
+            declared_ports = {}
+            for name_service, service in definition['services'].items():
                 build = service.get('build')
                 if build:
                     context = Path(build.get('context', stack)) if isinstance(build, dict) else Path(build)
@@ -253,6 +260,7 @@ def main():
                         context = stack / context
                     recipe = build.get('dockerfile', 'Dockerfile') if isinstance(build, dict) else 'Dockerfile'
                     dockerfile_images(context / recipe)
+                    declared_ports[name_service] = dockerfile_ports(context / recipe)
                 elif service.get('image'):
                     check_image(service['image'])
                 else:
@@ -267,8 +275,10 @@ def main():
                     raise ValueError(f'{name_service} : un conteneur attendu, {len(ids)} trouvé(s).')
                 containers.extend(ids)
                 info = json.loads(run(['docker', 'inspect', ids[0]], capture=True))[0]
-                exposed = (info['Config'].get('ExposedPorts') or {}).keys()
-                ports = sorted(set(compose_ports(service, exposed) + service_ports(stack_data, name_service)))
+                exposed = declared_ports.get(name_service, [])
+                configured = service_ports(stack_data, name_service)
+                inherited = (info['Config'].get('ExposedPorts') or {}).keys()
+                ports = selected_ports(service, exposed, configured, inherited)
                 address = wait(ids[0], ports, config.get('checks', {}).get(name_service, []))
                 addresses.append((name_service, address, ports[0] if ports else None))
             target = config.get('service')
