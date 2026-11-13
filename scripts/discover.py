@@ -6,6 +6,8 @@ import sys
 
 import yaml
 
+from validate_challenges import yaml_error
+
 
 def discover(root, event):
     files = sorted(root.rglob('challenge.yml'))
@@ -27,6 +29,8 @@ def discover(root, event):
     for item in changed:
         if item.name == 'challenge.yml' and not (root / item).exists() and (root / item.parent).is_dir():
             raise ValueError(f'Manifeste supprimé alors que le dossier existe encore : {item}')
+    if any(Path('.github/workflows') in item.parents for item in changed):
+        return [str(path.parent.relative_to(root)) for path in files]
     selected = set()
     for path in files:
         directory = path.parent.relative_to(root)
@@ -54,5 +58,6 @@ if __name__ == '__main__':
     try:
         main()
     except (ValueError, OSError, subprocess.SubprocessError, yaml.YAMLError) as exc:
-        print(f'Échec de la détection : {exc}', file=sys.stderr)
+        message = yaml_error(exc) if isinstance(exc, yaml.YAMLError) else str(exc)
+        print(f'Échec de la détection : {message}', file=sys.stderr)
         sys.exit(1)

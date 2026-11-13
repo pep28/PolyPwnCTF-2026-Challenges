@@ -11,19 +11,20 @@ import time
 
 import yaml
 
-from validate_challenges import validate
+from validate_challenges import validate, yaml_error
 
 
 COMPOSE = ('compose.yaml', 'compose.yml', 'docker-compose.yaml', 'docker-compose.yml')
 etape = 'manifeste'
-logs = []
 
 
 def run(args, cwd=None, capture=False, timeout=600, env=None, combine=False):
-    result = subprocess.run(args, cwd=cwd, text=True, stdout=subprocess.PIPE if capture else None,
-                            stderr=subprocess.PIPE if capture else None, timeout=timeout, env=env)
+    try:
+        result = subprocess.run(args, cwd=cwd, text=True, capture_output=True, timeout=timeout, env=env)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(f'Commande interrompue après {timeout} secondes.') from None
     if result.returncode:
-        raise RuntimeError(f"{' '.join(args[:4])} : {(result.stdout or '') + (result.stderr or '') or 'commande échouée'}")
+        raise RuntimeError(f'Commande échouée (code {result.returncode}).')
     return ((result.stdout or '') + (result.stderr or '') if combine else result.stdout).strip() if capture else ''
 
 
@@ -184,7 +185,6 @@ def solution(directory, data, host, port, config=None):
         output = run(commands[script.suffix], cwd=script.parent, capture=True, timeout=90, env=env, combine=True)
     except RuntimeError as exc:
         raise ValueError(f'La solution a échoué : {exc}') from exc
-    print(output)
     flags = data.get('flags', [])
     if isinstance(flags, str):
         flags = [flags]
@@ -277,7 +277,7 @@ def main():
                 else:
                     raise ValueError('Service Compose sans image ni build.')
             etape = 'build et démarrage'
-            print(run(compose + ['up', '-d', '--build'], cwd=stack, timeout=1200, capture=True))
+            run(compose + ['up', '-d', '--build'], cwd=stack, timeout=1200)
             etape = 'santé des services'
             addresses = []
             for name_service, service in definition['services'].items():
@@ -301,7 +301,7 @@ def main():
             if dockerfile.is_file():
                 dockerfile_images(dockerfile)
                 etape = 'build'
-                print(run(['docker', 'build', '-t', name, str(stack)], timeout=1200, capture=True))
+                run(['docker', 'build', '-t', name, str(stack)], timeout=1200)
                 image = name
             else:
                 check_image(image)
@@ -321,14 +321,10 @@ def main():
         etape = 'solution'
         resume_solution(solution(directory, data, host, config.get('port', port), config))
     finally:
-        for container in containers:
-            result = subprocess.run(['docker', 'logs', '--tail', '50', container], capture_output=True, text=True, check=False)
-            logs.append((result.stdout + result.stderr)[-5000:])
-            print(logs[-1])
         if compose:
-            subprocess.run(compose + ['down', '--volumes', '--remove-orphans'], cwd=stack, check=False)
+            subprocess.run(compose + ['down', '--volumes', '--remove-orphans'], cwd=stack, check=False, capture_output=True)
         elif containers:
-            subprocess.run(['docker', 'rm', '-f', *containers], check=False)
+            subprocess.run(['docker', 'rm', '-f', *containers], check=False, capture_output=True)
         if temporary:
             Path(temporary.name).unlink(missing_ok=True)
 
@@ -337,11 +333,10 @@ if __name__ == '__main__':
     try:
         main()
     except (ValueError, OSError, RuntimeError, subprocess.SubprocessError, yaml.YAMLError) as exc:
-        print(f'Échec : {exc}', file=sys.stderr)
+        message = yaml_error(exc) if isinstance(exc, yaml.YAMLError) else str(exc)
+        print(f'Échec ({etape}) : {message}', file=sys.stderr)
         summary = os.environ.get('GITHUB_STEP_SUMMARY')
         if summary:
             with open(summary, 'a', encoding='utf-8') as output:
-                output.write(f"### Échec : {os.environ.get('CHEMIN', '')}\n\nÉtape : {etape}\n\n{str(exc)[-5000:]}\n")
-                if logs:
-                    output.write('\nDerniers journaux :\n\n```text\n' + '\n'.join(logs) + '\n```\n')
+                output.write(f"### Échec\n\nÉtape : {etape}\n\n{message[-5000:]}\n")
         sys.exit(1)

@@ -48,6 +48,15 @@ class ManifestTests(unittest.TestCase):
         self.path.write_text(yaml.safe_dump(self.data) + 'value: 2\n')
         self.assertTrue(validate(self.path))
 
+    def test_yaml_invalide_sans_extrait_du_fichier(self):
+        self.path.write_text('name: [valeur_confidentielle_test\n')
+        errors = validate(self.path)
+        self.assertTrue(errors)
+        self.assertIn('ligne', errors[0])
+        self.assertNotIn('valeur_confidentielle_test', str(errors))
+        self.assertTrue(self.check(type='zync', playbook_name='custom_compose', deploy_parameters={'compose_definition': 'services: [valeur_confidentielle_test'}))
+        self.assertNotIn('valeur_confidentielle_test', str(validate(self.path)))
+
     def test_custom_deployment(self):
         self.assertTrue(self.check(type='zync'))
         self.assertEqual(self.check(type='zync', playbook_name='http', deploy_parameters={'image': 'example', 'unique': False}), [])

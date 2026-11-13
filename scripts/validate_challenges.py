@@ -33,12 +33,21 @@ def integer(value):
     return type(value) is int and value >= 0
 
 
+def yaml_error(error):
+    mark = getattr(error, 'problem_mark', None)
+    if mark:
+        return f'YAML invalide, ligne {mark.line + 1}, colonne {mark.column + 1}.'
+    return 'YAML invalide.'
+
+
 def validate(path, polycyber=True):
     errors = []
     try:
         data = yaml.load(path.read_text(encoding='utf-8'), Loader=Loader)
-    except (yaml.YAMLError, OSError, UnicodeError) as exc:
-        return [f'YAML invalide : {exc}']
+    except yaml.YAMLError as exc:
+        return [yaml_error(exc)]
+    except (OSError, UnicodeError):
+        return ['Manifeste illisible.']
     if not isinstance(data, dict):
         return ['Le document doit être un objet YAML.']
     for key in ('name', 'author', 'category', 'type', 'description'):
@@ -140,7 +149,7 @@ def validate(path, polycyber=True):
                     if not isinstance(definition, dict) or not isinstance(definition.get('services'), dict) or not definition['services']:
                         errors.append('compose_definition doit définir des services.')
                 except yaml.YAMLError as exc:
-                    errors.append(f'compose_definition invalide : {exc}')
+                    errors.append(f'compose_definition : {yaml_error(exc)}')
             elif not text(params.get('image')):
                 errors.append('deploy_parameters.image doit être du texte non vide.')
     return errors

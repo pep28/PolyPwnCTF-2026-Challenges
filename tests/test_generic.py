@@ -1,5 +1,7 @@
 import os
 import json
+import io
+from contextlib import redirect_stdout, redirect_stderr
 from pathlib import Path
 import subprocess
 import sys
@@ -30,6 +32,43 @@ class TestCI(unittest.TestCase):
     def test_sortie_standard_separee_des_avertissements(self):
         command = [sys.executable, '-c', 'import sys; print("{}") ; print("avertissement", file=sys.stderr)']
         self.assertEqual(challenge.run(command, capture=True), '{}')
+
+    def test_sorties_de_commandes_non_publiees(self):
+        for code in (0, 1):
+            with self.subTest(code=code):
+                output = io.StringIO()
+                command = [sys.executable, '-c', f'import sys; print("donnee_test_confidentielle"); print("erreur_test_confidentielle", file=sys.stderr); sys.exit({code})']
+                with redirect_stdout(output), redirect_stderr(output):
+                    if code:
+                        with self.assertRaises(RuntimeError) as error:
+                            challenge.run(command, capture=True)
+                        self.assertEqual(str(error.exception), 'Commande échouée (code 1).')
+                    else:
+                        self.assertEqual(challenge.run(command), '')
+                self.assertEqual(output.getvalue(), '')
+
+    def test_timeout_sans_sortie_ni_arguments(self):
+        error = subprocess.TimeoutExpired(['commande', 'argument_confidentiel'], 10, output='sortie_confidentielle')
+        with patch.object(challenge.subprocess, 'run', side_effect=error):
+            with self.assertRaisesRegex(RuntimeError, '^Commande interrompue après 10 secondes.$'):
+                challenge.run(['commande'], timeout=10)
+
+    def test_solution_sans_publication_du_flag(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'solution').mkdir()
+            script = root / 'solution/solve.py'
+            for code in (0, 1):
+                script.write_text(f"import sys\nprint('flag{{confidentiel_test}}')\nsys.exit({code})\n")
+                output = io.StringIO()
+                with redirect_stdout(output), redirect_stderr(output):
+                    if code:
+                        with self.assertRaisesRegex(ValueError, 'La solution a échoué : Commande échouée') as error:
+                            challenge.solution(root, {'flags': ['flag{confidentiel_test}']}, None, None)
+                        self.assertNotIn('confidentiel_test', str(error.exception))
+                    else:
+                        self.assertEqual(challenge.solution(root, {'flags': ['flag{confidentiel_test}']}, None, None)[0], 'validée')
+                self.assertEqual(output.getvalue(), '')
 
     def test_images_versionnees(self):
         with patch.object(challenge, 'run') as run:
@@ -139,6 +178,16 @@ class TestCI(unittest.TestCase):
             self.assertEqual(len(discover.discover(root, {'before': '0' * 40})), 2)
             with patch.dict(os.environ, {'TOUS': 'true'}):
                 self.assertEqual(len(discover.discover(root, {'before': base})), 2)
+            (root / 'Web/Troisieme').mkdir(parents=True)
+            (root / 'Web/Troisieme/challenge.yml').write_text('name: test\n')
+            subprocess.run(['git', '-C', str(root), 'add', '.'], check=True)
+            subprocess.run(['git', '-C', str(root), 'commit', '-qm', 'troisieme challenge'], check=True)
+            base = subprocess.check_output(['git', '-C', str(root), 'rev-parse', 'HEAD'], text=True).strip()
+            (root / '.github/workflows').mkdir(parents=True)
+            (root / '.github/workflows/ci.yml').write_text('name: CI\n')
+            subprocess.run(['git', '-C', str(root), 'add', '.'], check=True)
+            subprocess.run(['git', '-C', str(root), 'commit', '-qm', 'mise a jour CI'], check=True)
+            self.assertEqual(discover.discover(root, {'before': base}), ['Web/Autre', 'Web/Troisieme', 'Web/Un challenge'])
 
 
 if __name__ == '__main__':
