@@ -1,1 +1,8 @@
-name: [invalide
+name: Test protection
+author: CI
+category: Test
+type: standard
+value: 1
+description: Vérification temporaire.
+flags:
+  - 'flag{test}'
