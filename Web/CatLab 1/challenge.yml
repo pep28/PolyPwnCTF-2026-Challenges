@@ -10,7 +10,7 @@ deploy_parameters:
   compose_definition:
     services:
       db:
-        image: ghcr.io/polycyber/polypwnctf-2026/catlab1-db:latest
+        image: catlab-ci-db
         restart: always
         healthcheck:
           test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
@@ -29,7 +29,7 @@ deploy_parameters:
           - /var/lib/mysql
 
       web:
-        image: ghcr.io/polycyber/polypwnctf-2026/catlab1-web:latest
+        image: catlab-ci-web
         expose:
           - "80"
         networks:

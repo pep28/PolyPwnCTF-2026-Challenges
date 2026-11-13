@@ -1,0 +1,10 @@
+checks:
+  web:
+  - port: 80
+    http: /
+  - port: 22
+    contains: SSH-2.0
+  - command:
+    - mariadb-admin
+    - ping
+    - --silent

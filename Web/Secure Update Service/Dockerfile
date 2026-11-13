@@ -1,5 +1,5 @@
 # check=skip=SecretsUsedInArgOrEnv
-FROM dunglas/frankenphp:alpine
+FROM dunglas/frankenphp:alpine@sha256:974e767f7694964fdb23ead3172dd0a12cedefbd929fbe0db7f69a680663295d
 
 ENV SERVER_NAME=:80
 ENV KEY=76820ab89076766b7a1bc86d84e846a77331198043665456b969f9b6ec5b3c5a

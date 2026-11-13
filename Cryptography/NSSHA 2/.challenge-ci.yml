@@ -1,0 +1,5 @@
+checks:
+  app:
+  - port: 8888
+    contains: Welcome to NSSHA
+ignore_solution: Le script produit des candidats et doit être adapté pour valider automatiquement le flag.

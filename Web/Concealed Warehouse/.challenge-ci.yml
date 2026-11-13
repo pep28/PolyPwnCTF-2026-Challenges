@@ -1,0 +1,5 @@
+checks:
+  app:
+  - port: 5000
+    http: /
+ignore_solution: Le script dépend d'un webhook externe et ne récupère pas automatiquement le flag.

@@ -1,56 +1,35 @@
 # CI des challenges
 
-La pipeline tourne sur les pull requests et sur les pushes vers `main` et `qa-branch`.
+La CI valide les challenges modifiés lors des pull requests et des pushs sur `main` et `qa-branch`. `.github/workflows/ci-generique.yml` appelle un workflow partagé à un commit précis. Il ne reste aucun script de CI à recopier dans le dépôt de challenges et aucun inventaire `deployments.yml`.
 
-## Contrôles
+Le code partagé est provisoirement sur la branche `ci/central-autonome` du fork. Le moteur est indépendant des challenges 2026. La création du dépôt central PolyCyber, son premier appel depuis un autre dépôt et la mise à jour de l'adresse appelée restent à faire avant adoption.
 
-| Job | Vérifications |
-| --- | --- |
-| `validate` | Tests de non-régression, structure des 56 manifestes, champs imbriqués et présence des fichiers distribués. |
-| `docker-build` | Build, démarrage et réponses des 11 challenges sans Compose, puis solution de Labo Rinthe. |
-| `compose-build` | Build et démarrage des six projets Compose, santé de chaque service, puis solutions de CatLab 1, CatLab 2 et Vault13. |
+## Vérifications
 
-Les champs suivent l'[exemple ctfcli](https://github.com/CTFd/ctfcli/blob/master/ctfcli/spec/challenge-example.yml), avec les champs PolyCyber `playbook_name` et `deploy_parameters`. Le validateur vérifie les flags simples et objets, tags, topics, hints, requirements, fichiers, score dynamique, état et métadonnées de déploiement. Les clés YAML répétées sont refusées. L'ancien format Compose avec `deploy_parameters.expose` est accepté si un fichier Compose existe.
+Pour chaque challenge : manifeste, détection du déploiement, images, build, démarrage, santé puis solution. Le premier échec arrête ce challenge. Les autres jobs continuent. Un changement de stack sélectionne aussi les challenges qui en dépendent ; un changement de workflow relance tous les challenges.
 
-Ce validateur ne remplace pas l'installation sur CTFd : il ne vérifie pas les plugins du serveur, les références entre challenges, le calcul CFSS ou le contenu des archives. Pour Git LFS, la présence du fichier suivi est vérifiée, pas le téléchargement de son contenu.
+Un Dockerfile ou un build Compose local est prioritaire. Les images externes doivent être publiques et versionnées. Le manifeste peut aussi contenir une définition Compose. Les ports viennent du manifeste, de Compose ou d'EXPOSE. Les healthchecks existants sont pris en compte.
 
-## Démarrage et santé
+Le fichier facultatif `.challenge-ci.yml` définit les cas particuliers : `checks`, `compose_override`, `stack`, `service`, `port` ou une raison textuelle `ignore_solution`. Les contrôles des 18 challenges déjà couverts ont été déplacés à côté de leurs manifestes.
 
-`scripts/test_deployments.py` utilise `.github/ci/deployments.yml`. L'inventaire doit correspondre aux Dockerfiles et fichiers Compose placés à côté des `challenge.yml`, ainsi qu'aux challenges `zync` utilisant une image préconstruite. Un nouveau déploiement découvert sans entrée dans cet inventaire fait échouer le job. Les Dockerfiles imbriqués sont construits lorsqu'un Compose les référence ; les recettes alternatives imbriquées ne sont pas lancées séparément.
+Une solution utilise `solution/solve.py` ou `solution/solve.sh`, reçoit `CHALLENGE_HOST` et `CHALLENGE_PORT` et écrit un flag du manifeste. Les dépendances Python sont dans `solution/requirements.txt`. Les flags statiques et regex sont reconnus sur stdout et stderr. Un code non nul et un flag absent donnent deux erreurs distinctes.
 
-Chaque service Compose doit avoir ses propres contrôles ou un healthcheck Docker. Aucun projet n'est ignoré parce qu'il utilise une image préconstruite : Docker doit pouvoir la récupérer et la démarrer.
+Six solutions sont automatisées : Labo Rinthe, Vault13, CatLab 1, CatLab 2, Dexter 2 et Dexter 3. Une solution absente ou explicitement ignorée est indiquée comme telle dans le résumé. Un job vert ne signifie donc pas que toutes les solutions ont été exécutées.
 
-Les tests attendent au maximum 120 secondes, puis exigent deux passages réussis espacés de deux secondes. Ils vérifient les réponses HTTP, les bannières ou réponses TCP, les healthchecks Docker et certaines commandes internes. Un conteneur arrêté échoue immédiatement. Les tests couvrent aussi le backend de DNA Visualizer, les deux services de Vault13, MariaDB et SSH dans Rabb-IT, la base CatLab et son service interne.
+## Pull requests
 
-Les conteneurs sont supprimés après chaque test, y compris en cas d'erreur. Les volumes Compose sont supprimés. Exécuter ces tests dans un environnement dédié, sans services ni données de travail à conserver. Les tests utilisent les adresses du réseau Docker et ciblent un runner Linux.
+La CI produit `ci / resultat`, des résumés par job et un commentaire mis à jour sur la PR. Pour une contribution provenant d'un fork, le commentaire peut être indisponible avec le jeton en lecture seule ; les checks restent visibles.
 
-Les solutions sont exécutées par `scripts/check_solution.py` : sortie sans erreur et présence d'un flag du manifeste. Le script effectue au maximum cinq essais de 90 secondes. Les quatre solutions testées ne prouvent pas la résolution de tous les challenges ; les contrôles de santé vérifient leur disponibilité.
+Les protections actuelles demandent `validate`, `docker-build` et `compose-build`. Trois petits jobs de compatibilité portent ces noms et échouent si la CI partagée échoue. Les protections existantes restent effectives. Leur suppression nécessite que l'administrateur exige d'abord le check global de la nouvelle CI.
 
-## Passage par QA
+## Confidentialité
 
-1. Créer une branche de travail depuis `qa-branch`.
-2. Ouvrir une PR vers `qa-branch`.
-3. Corriger les erreurs jusqu'à ce que `validate`, `docker-build` et `compose-build` passent.
-4. Après la revue QA, ouvrir une PR de `qa-branch` vers `main`.
+Le moteur n'affiche plus les sorties des solutions, des builds, de l'installation de leurs dépendances ou des conteneurs. Il ne reprend pas ces sorties dans les erreurs. Les erreurs YAML indiquent la ligne et la colonne sans copier le fichier. Le commentaire de PR contient les statuts, l'étape du job en échec et les liens, sans extrait de logs.
 
-Les deux branches du fork sont protégées par la règle [Require CI on main](https://github.com/pep28/PolyPwnCTF-2026-Challenges/rules/25928381). Elle impose une PR et les trois contrôles GitHub Actions, interdit les suppressions et les force-pushes, sans contournement. Le chemin par QA est une convention documentée ; la règle ne bloque pas une PR directe vers main et n'impose pas de revue humaine. Les protections GitHub ne sont pas copiées avec le code.
+Les tests tournent sans secret de déploiement ou de registre transmis. Les checkouts ne conservent pas leurs identifiants. L'écriture sur les PR est limitée au job de rapport, qui ne récupère ni n'exécute le code des challenges. Les noms de challenges et les raisons rédigées dans leur configuration restent visibles selon les permissions du dépôt. Aucun changement de visibilité n'est effectué. Les anciennes exécutions ne sont pas nettoyées par cette modification.
 
-## Tester
+## Validation et intégration
 
-Depuis la racine du dépôt, avec Python 3.12 et Docker Compose :
+Le moteur possède 26 tests unitaires, dont des tests de non-publication des sorties et des flags. Ils s'exécutent aussi dans GitHub Actions. Les résultats de la révision proposée sont dans l'onglet Checks de la PR. Le guide `presentation-ci.md` rassemble la démonstration et les points restant à valider par l'équipe.
 
-```sh
-python -m pip install PyYAML requests
-python -m unittest discover -s tests
-python scripts/validate_challenges.py
-python scripts/test_deployments.py docker
-python scripts/test_deployments.py compose
-```
-
-Pour un nouveau service, ajouter ses contrôles dans `.github/ci/deployments.yml`. Utiliser une route HTTP normale et son code attendu, une réponse TCP stable ou une commande interne qui échoue si le service n'est pas prêt. Ajouter un test pour chaque service, même sans port publié. Les ports publiés fixes sont réservés aux scripts de solution qui en ont besoin.
-
-## Résultats et intégration
-
-La [PR de test #2](https://github.com/pep28/PolyPwnCTF-2026-Challenges/pull/2) a confirmé qu'un manifeste invalide bloque la fusion. Les contrôles de démarrage et la validation renforcée sont dans la [PR #5](https://github.com/pep28/PolyPwnCTF-2026-Challenges/pull/5).
-
-Cette CI teste les challenges sur les runners GitHub. Elle ne déploie pas l'infrastructure PolyCyber. L'intégration au dépôt officiel nécessite une revue de l'équipe et une PR ; ses protections doivent être configurées par un administrateur.
+Les noms d'images locales des manifestes doivent être confirmés avec le système de déploiement PolyCyber avant fusion. Cette CI vérifie les builds et le fonctionnement local ; elle ne publie pas les images et ne déploie pas en production.

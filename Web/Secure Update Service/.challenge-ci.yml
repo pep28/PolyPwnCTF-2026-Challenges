@@ -1,0 +1,5 @@
+checks:
+  app:
+  - port: 80
+    http: /
+ignore_solution: Le script existant est interactif et nécessite un serveur FTP de test.

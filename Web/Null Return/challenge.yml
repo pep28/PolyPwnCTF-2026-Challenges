@@ -5,7 +5,7 @@ category: Web
 type: zync
 playbook_name: http
 deploy_parameters:
-  image: ghcr.io/polycyber/polypwnctf-2026/null-return:latest
+  image: null-return:local
   unique: false
   http_port: 5000
 #https://res260.github.io/cfss

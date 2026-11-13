@@ -1,0 +1,12 @@
+stack: Web/CatLab 1
+service: web
+port: 80
+checks:
+  db: []
+  web:
+  - port: 80
+    http: /index.php
+  - command:
+    - php
+    - -r
+    - 'exit(@fsockopen("127.0.0.1", 1337) === false ? 1 : 0);'

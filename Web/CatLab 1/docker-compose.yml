@@ -1,6 +1,7 @@
 services:
   db:
-    image: ghcr.io/polycyber/polypwnctf-2026/catlab1-db:latest
+    image: catlab-ci-db
+    build: ./db
     restart: always
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
@@ -17,7 +18,8 @@ services:
       - /var/lib/mysql
 
   web:
-    image: ghcr.io/polycyber/polypwnctf-2026/catlab1-web:latest
+    image: catlab-ci-web
+    build: .
     ports:
       - "8000:80"
     environment:

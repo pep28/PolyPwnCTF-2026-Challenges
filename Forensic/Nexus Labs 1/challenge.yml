@@ -5,7 +5,7 @@ category: Forensic
 type: zync
 playbook_name: http
 deploy_parameters:
-  image: "ghcr.io/polypwn/nexus-labs:stage-1"
+  image: "nexus-labs:stage-1"
   http_port: 8080
   unique: true
 

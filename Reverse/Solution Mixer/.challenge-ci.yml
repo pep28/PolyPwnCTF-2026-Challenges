@@ -1,0 +1,7 @@
+checks:
+  app:
+  - port: 34512
+    send: 'MIX|water|water|1|1|1
+
+      '
+    contains: RESULT|
