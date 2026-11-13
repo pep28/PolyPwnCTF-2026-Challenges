@@ -1,0 +1,77 @@
+name: Test complet CI autonome 2025
+on:
+  push:
+    branches: [ci/test-generic-shared]
+    paths: [.github/workflows/test-2025-autonome-complet.yml]
+permissions:
+  contents: read
+jobs:
+  detection:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.challenges.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: polycyber/PolyPwnCTF-2025-Challenges
+          ref: 606c0158e7cbffa5bc4f65c7a82e5edbccfe2ec4
+          path: challenges
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: pep28/PolyPwnCTF-2026-Challenges
+          ref: 9ac33a6d3f175ddb0db6b2e5a4237ee4f10e7e4e
+          path: ci
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - run: pip install PyYAML==6.0.2
+      - id: challenges
+        env:
+          TOUS: 'true'
+        run: python ci/scripts/discover.py
+  challenge:
+    needs: detection
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        chemin: ${{ fromJSON(needs.detection.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: polycyber/PolyPwnCTF-2025-Challenges
+          ref: 606c0158e7cbffa5bc4f65c7a82e5edbccfe2ec4
+          path: challenges
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: pep28/PolyPwnCTF-2026-Challenges
+          ref: 9ac33a6d3f175ddb0db6b2e5a4237ee4f10e7e4e
+          path: ci
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - run: pip install PyYAML==6.0.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: pep28/PolyPwnCTF-2026-Challenges
+          ref: 2413ba62e812a12a47fc70e3cd289a34afb91840
+          path: correctifs
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: pep28/PolyPwnCTF-2026-Challenges
+          ref: 61cb935688332aa270ede6d90d26a6146b44dd60
+          path: interstellar
+          persist-credentials: false
+      - run: |
+          git -C challenges apply ../correctifs/.github/ci/2025-images.patch
+          git -C challenges apply ../interstellar/.github/ci/interstellar-2025.patch
+      - env:
+          CHEMIN: ${{ matrix.chemin }}
+          POLYCYBER: 'true'
+        run: python ci/scripts/challenge.py
