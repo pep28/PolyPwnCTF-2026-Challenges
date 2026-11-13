@@ -60,16 +60,24 @@ class TestCI(unittest.TestCase):
             root = Path(temp)
             (root / 'solution').mkdir()
             (root / 'solution/solve.md').write_text('Étapes manuelles')
-            challenge.solution(root, {'flags': ['flag{test}']}, None, None)
+            self.assertEqual(challenge.solution(root, {'flags': ['flag{test}']}, None, None)[0], 'ignorée')
 
     def test_solution_sortie_erreur_et_raison_obligatoire(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             (root / 'solution').mkdir()
             (root / 'solution/solve.py').write_text("import sys\nprint('flag{test}', file=sys.stderr)\n")
-            challenge.solution(root, {'flags': ['flag{test}']}, None, None)
+            self.assertEqual(challenge.solution(root, {'flags': ['flag{test}']}, None, None)[0], 'validée')
             with self.assertRaisesRegex(ValueError, 'doit expliquer'):
                 challenge.solution(root, {'flags': ['flag{test}']}, None, None, {'ignore_solution': True})
+
+    def test_resume_indique_la_solution_ignoree(self):
+        with tempfile.TemporaryDirectory() as temp:
+            summary = Path(temp) / 'resume.md'
+            with patch.dict(os.environ, {'GITHUB_STEP_SUMMARY': str(summary)}):
+                challenge.resume_solution(('ignorée', 'Pas de script automatique.'))
+            self.assertIn('Solution ignorée', summary.read_text())
+            self.assertIn('Pas de script automatique.', summary.read_text())
 
     def test_ports_manifestes_et_compose(self):
         self.assertEqual(challenge.manifest_ports({'deploy_parameters': {'http_port': 5000, 'published_ports': [8888, '80:8080']}}), [5000, 8080, 8888])

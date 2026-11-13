@@ -164,12 +164,12 @@ def solution(directory, data, host, port, config=None):
         if not isinstance(config['ignore_solution'], str) or not config['ignore_solution'].strip():
             raise ValueError('ignore_solution doit expliquer pourquoi la solution est ignorée.')
         print(f"Solution ignorée : {config['ignore_solution']}")
-        return
+        return 'ignorée', config['ignore_solution']
     scripts = sorted(path for path in (directory / 'solution').glob('solve.*')
                      if path.suffix.lower() not in ('.md', '.txt'))
     if not scripts:
         print('Solution ignorée : aucun fichier solution/solve.*.')
-        return
+        return 'ignorée', 'Aucun fichier solution/solve.*.'
     if len(scripts) != 1:
         raise ValueError('Un seul fichier solution/solve.* est attendu.')
     script = scripts[0]
@@ -190,15 +190,24 @@ def solution(directory, data, host, port, config=None):
         flags = [flags]
     for flag in flags:
         if isinstance(flag, str) and flag in output:
-            return
+            return 'validée', ''
         if isinstance(flag, dict):
             value = flag.get('content', '')
             options = re.IGNORECASE if flag.get('data') == 'case_insensitive' else 0
             if flag.get('type') == 'regex' and re.search(value, output, options):
-                return
+                return 'validée', ''
             if flag.get('type') != 'regex' and value and re.search(re.escape(value), output, options):
-                return
+                return 'validée', ''
     raise ValueError('Solution terminée, mais aucun flag trouvé dans sa sortie.')
+
+
+def resume_solution(resultat):
+    statut, raison = resultat
+    print(f'Solution {statut}.' if not raison else f'Solution {statut} : {raison}')
+    summary = os.environ.get('GITHUB_STEP_SUMMARY')
+    if summary:
+        with open(summary, 'a', encoding='utf-8') as output:
+            output.write(f'### Solution {statut}\n\n{raison}\n')
 
 
 def main():
@@ -238,7 +247,7 @@ def main():
         if data.get('type') == 'zync':
             raise ValueError('Déploiement déclaré sans recette ou image identifiable.')
         etape = 'solution'
-        solution(directory, data, None, None, config)
+        resume_solution(solution(directory, data, None, None, config))
         return
     name = 'ci-' + str(os.getpid())
     containers = []
@@ -310,7 +319,7 @@ def main():
             port = ports[0] if ports else None
         print('Démarrage vérifié.', flush=True)
         etape = 'solution'
-        solution(directory, data, host, config.get('port', port), config)
+        resume_solution(solution(directory, data, host, config.get('port', port), config))
     finally:
         for container in containers:
             result = subprocess.run(['docker', 'logs', '--tail', '50', container], capture_output=True, text=True, check=False)
