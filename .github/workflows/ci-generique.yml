@@ -1,0 +1,39 @@
+name: CI générique
+on:
+  pull_request:
+  push:
+    branches: [main, qa-branch]
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+jobs:
+  ci:
+    uses: pep28/PolyPwnCTF-2026-Challenges/.github/workflows/challenge-ci.yml@0b60115374d9ee372865f3e86b50989514dc057a
+
+  validate:
+    if: always()
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          RESULTAT: ${{ needs.ci.result }}
+        run: test "$RESULTAT" = success
+
+  docker-build:
+    if: always()
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          RESULTAT: ${{ needs.ci.result }}
+        run: test "$RESULTAT" = success
+
+  compose-build:
+    if: always()
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          RESULTAT: ${{ needs.ci.result }}
+        run: test "$RESULTAT" = success
