@@ -1,0 +1,132 @@
+name: CI réutilisable
+
+on:
+  workflow_call:
+    inputs:
+      polycyber:
+        type: boolean
+        default: true
+      tous:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  detection:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.challenges.outputs.matrix }}
+      count: ${{ steps.challenges.outputs.count }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: challenges
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: pep28/PolyPwnCTF-2026-Challenges
+          ref: 9ac33a6d3f175ddb0db6b2e5a4237ee4f10e7e4e
+          path: ci
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - run: pip install PyYAML==6.0.2
+      - name: Tester le code de la CI
+        env:
+          PYTHONPATH: ci
+        run: python -m unittest discover -s ci/tests
+      - id: challenges
+        env:
+          TOUS: ${{ inputs.tous }}
+        run: python ci/scripts/discover.py
+
+  challenge:
+    needs: detection
+    if: needs.detection.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        chemin: ${{ fromJSON(needs.detection.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: challenges
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: pep28/PolyPwnCTF-2026-Challenges
+          ref: 9ac33a6d3f175ddb0db6b2e5a4237ee4f10e7e4e
+          path: ci
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - run: pip install PyYAML==6.0.2
+      - name: Vérifier le challenge
+        env:
+          CHEMIN: ${{ matrix.chemin }}
+          POLYCYBER: ${{ inputs.polycyber }}
+        run: python ci/scripts/challenge.py
+
+  resultat:
+    if: always()
+    needs: [detection, challenge]
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          DETECTION: ${{ needs.detection.result }}
+          CHALLENGE: ${{ needs.challenge.result }}
+        run: |
+          if [ "$DETECTION" != success ] || { [ "$CHALLENGE" != success ] && [ "$CHALLENGE" != skipped ]; }; then
+            exit 1
+          fi
+
+  rapport:
+    if: always() && github.event_name == 'pull_request'
+    needs: [detection, challenge]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issue_number = context.issue.number;
+            const run_id = context.runId;
+            const marker = '<!-- rapport-ci-challenges -->';
+            const current = await github.rest.pulls.get({ owner, repo, pull_number: issue_number });
+            if (current.data.head.sha !== context.payload.pull_request.head.sha) return;
+            const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, { owner, repo, run_id, per_page: 100 });
+            const selected = jobs.filter(job => /(?:detection|challenge \()/.test(job.name));
+            const lines = [];
+            for (const job of selected) {
+              lines.push(`- [${job.name}](${job.html_url}) : ${job.conclusion || job.status}`);
+              if (job.conclusion === 'failure') {
+                try {
+                  const result = await github.rest.actions.downloadJobLogsForWorkflowRun({ owner, repo, job_id: job.id });
+                  const logs = typeof result.data === 'string' ? result.data : '';
+                  const error = logs.split('\n').filter(line => /Échec :|##\[error\]/.test(line)).slice(-5).join('\n');
+                  if (error) lines.push('```text\n' + error.replaceAll('```', "'''") + '\n```');
+                } catch (error) {
+                  lines.push('  Journaux disponibles dans le lien du job.');
+                }
+              }
+            }
+            const body = `${marker}\n### Résultat de la CI\n\n${lines.join('\n') || 'Aucun challenge modifié.'}\n\n[Exécution complète](${context.serverUrl}/${owner}/${repo}/actions/runs/${run_id})`;
+            try {
+              const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number, per_page: 100 });
+              const previous = comments.find(comment => comment.user.login === 'github-actions[bot]' && comment.body.includes(marker));
+              if (previous) await github.rest.issues.updateComment({ owner, repo, comment_id: previous.id, body });
+              else await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            } catch (error) {
+              core.warning(`Commentaire de PR impossible : ${error.message}`);
+            }
