@@ -10,7 +10,7 @@ Pour chaque challenge, la CI valide `challenge.yml`, détecte le déploiement, v
 
 Un fichier facultatif `.challenge-ci.yml` à côté du manifeste peut définir des contrôles spécifiques `checks`, un `compose_override`, une `stack` partagée, le `service` et le `port` de la solution ou une raison `ignore_solution`. Les fichiers existants donnent des exemples.
 
-Une solution automatisée utilise `solution/solve.py` ou `solution/solve.sh`, lit `CHALLENGE_HOST` et `CHALLENGE_PORT` et affiche un flag du manifeste. Ses dépendances Python sont déclarées dans `solution/requirements.txt`. Une solution absente ou explicitement ignorée est signalée dans les journaux.
+Une solution automatisée utilise `solution/solve.py` ou `solution/solve.sh`, lit `CHALLENGE_HOST` et `CHALLENGE_PORT` et affiche un flag du manifeste. Ses dépendances Python sont déclarées dans `solution/requirements.txt`. Une solution absente ou explicitement ignorée est indiquée dans les journaux et le résumé du challenge.
 
 ## Pull requests
 

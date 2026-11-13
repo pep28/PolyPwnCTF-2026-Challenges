@@ -9,7 +9,7 @@ permissions:
   pull-requests: write
 jobs:
   ci:
-    uses: pep28/PolyPwnCTF-2026-Challenges/.github/workflows/challenge-ci.yml@0b60115374d9ee372865f3e86b50989514dc057a
+    uses: pep28/PolyPwnCTF-2026-Challenges/.github/workflows/challenge-ci.yml@efd1da12cdde3df63614a85059bf4379c2255ff3
 
   validate:
     if: always()
