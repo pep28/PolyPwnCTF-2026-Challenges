@@ -1,4 +1,5 @@
 import os
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -14,6 +15,18 @@ import discover
 
 
 class TestCI(unittest.TestCase):
+    def test_service_arrete(self):
+        state = [{'State': {'Status': 'exited', 'ExitCode': 1}}]
+        with patch.object(challenge, 'run', return_value=json.dumps(state)):
+            with self.assertRaisesRegex(RuntimeError, 'Conteneur arrêté'):
+                challenge.wait('id', [])
+
+    def test_service_verifie_deux_fois(self):
+        state = [{'State': {'Status': 'running'}, 'NetworkSettings': {'Networks': {'test': {'IPAddress': '127.0.0.1'}}}}]
+        with patch.object(challenge, 'run', return_value=json.dumps(state)) as inspect, patch.object(challenge.time, 'sleep'):
+            self.assertEqual(challenge.wait('id', []), '127.0.0.1')
+            self.assertEqual(inspect.call_count, 2)
+
     def test_sortie_standard_separee_des_avertissements(self):
         command = [sys.executable, '-c', 'import sys; print("{}") ; print("avertissement", file=sys.stderr)']
         self.assertEqual(challenge.run(command, capture=True), '{}')
@@ -48,6 +61,15 @@ class TestCI(unittest.TestCase):
             (root / 'solution').mkdir()
             (root / 'solution/solve.md').write_text('Étapes manuelles')
             challenge.solution(root, {'flags': ['flag{test}']}, None, None)
+
+    def test_solution_sortie_erreur_et_raison_obligatoire(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'solution').mkdir()
+            (root / 'solution/solve.py').write_text("import sys\nprint('flag{test}', file=sys.stderr)\n")
+            challenge.solution(root, {'flags': ['flag{test}']}, None, None)
+            with self.assertRaisesRegex(ValueError, 'doit expliquer'):
+                challenge.solution(root, {'flags': ['flag{test}']}, None, None, {'ignore_solution': True})
 
     def test_ports_manifestes_et_compose(self):
         self.assertEqual(challenge.manifest_ports({'deploy_parameters': {'http_port': 5000, 'published_ports': [8888, '80:8080']}}), [5000, 8080, 8888])

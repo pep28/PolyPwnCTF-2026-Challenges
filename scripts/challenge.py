@@ -19,12 +19,12 @@ etape = 'manifeste'
 logs = []
 
 
-def run(args, cwd=None, capture=False, timeout=600, env=None):
+def run(args, cwd=None, capture=False, timeout=600, env=None, combine=False):
     result = subprocess.run(args, cwd=cwd, text=True, stdout=subprocess.PIPE if capture else None,
                             stderr=subprocess.PIPE if capture else None, timeout=timeout, env=env)
     if result.returncode:
         raise RuntimeError(f"{' '.join(args[:4])} : {(result.stdout or '') + (result.stderr or '') or 'commande échouée'}")
-    return result.stdout.strip() if capture else ''
+    return ((result.stdout or '') + (result.stderr or '') if combine else result.stdout).strip() if capture else ''
 
 
 def check_image(image):
@@ -161,6 +161,8 @@ def wait(container, ports, checks=()):
 def solution(directory, data, host, port, config=None):
     config = config or {}
     if config.get('ignore_solution'):
+        if not isinstance(config['ignore_solution'], str) or not config['ignore_solution'].strip():
+            raise ValueError('ignore_solution doit expliquer pourquoi la solution est ignorée.')
         print(f"Solution ignorée : {config['ignore_solution']}")
         return
     scripts = sorted(path for path in (directory / 'solution').glob('solve.*')
@@ -179,7 +181,7 @@ def solution(directory, data, host, port, config=None):
         raise ValueError(f'Langage de solution non pris en charge : {script.suffix}')
     env = os.environ | {'CHALLENGE_HOST': host or '', 'CHALLENGE_PORT': str(port or '')}
     try:
-        output = run(commands[script.suffix], cwd=script.parent, capture=True, timeout=90, env=env)
+        output = run(commands[script.suffix], cwd=script.parent, capture=True, timeout=90, env=env, combine=True)
     except RuntimeError as exc:
         raise ValueError(f'La solution a échoué : {exc}') from exc
     print(output)

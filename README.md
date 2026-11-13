@@ -1,57 +1,39 @@
-# PolyPwnCTF-2026-Challenges
+# CI des challenges
 
-Ce dépôt contient les challenges de l'édition 2026 du PolyPwn, un CTF (Capture The Flag) organisé par [PolyCyber](https://polycyber.io/).
+Ce dépôt contient le workflow réutilisable et les scripts de validation des challenges. Le dépôt appelant conserve uniquement un workflow GitHub Actions avec ses déclencheurs et ses permissions.
 
-Les challenges seront à terme accessibles sur l'infrastructure permanente de PolyCyber : https://ctf.polycyber.io/
+Le workflow détecte les challenges modifiés et leurs stacks partagées, puis vérifie pour chacun le manifeste, les images, le build, le démarrage, les contrôles de santé et la solution disponible. Chaque challenge est testé dans un job indépendant.
 
-## CI
+## Utilisation
 
-Les contrôles automatiques, le passage par la branche QA et les commandes de test sont décrits dans [docs/ci.md](docs/ci.md).
+L'adresse ci-dessous est celle du prototype public. Elle sera remplacée par celle du dépôt central PolyCyber lors du transfert.
 
-## À propos
+```yaml
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main, qa-branch]
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+jobs:
+  ci:
+    uses: pep28/PolyPwnCTF-2026-Challenges/.github/workflows/challenge-ci.yml@COMMIT_DU_WORKFLOW
+```
 
-PolyPwn est un événement annuel qui rassemble des passionnés de cybersécurité pour résoudre des défis techniques dans différents domaines :
-- Reverse Engineering
-- Web Security
-- Cryptographie
-- Forensics
-- Pwn
-- Et plus encore !
+Fixer `COMMIT_DU_WORKFLOW` au commit publié. Le workflow récupère ses scripts au commit indiqué dans ses deux étapes `actions/checkout`. Lors d'une mise à jour, publier les scripts, remplacer ce commit dans le workflow, puis mettre à jour la référence dans le dépôt appelant. Le transfert vers un nouveau dépôt nécessite aussi d'actualiser ces deux champs `repository` une seule fois dans le workflow central.
 
-## Structure du Dépôt
+L'option `polycyber: false` désactive les contrôles propres aux champs de déploiement PolyCyber. L'option `tous: true` teste tous les challenges ; par défaut, seuls les challenges modifiés et ceux qui dépendent d'une stack modifiée sont testés.
 
-Les challenges sont organisés par catégories dans des dossiers dédiés. Chaque challenge contient :
-- Une description détaillée
-- Les fichiers nécessaires
-- Un flag à trouver
-- Des indices (si applicable)
+Un fichier `.challenge-ci.yml` facultatif dans un challenge permet d'indiquer une stack partagée, un override Compose, le service et le port cibles, des contrôles supplémentaires ou une raison de ne pas exécuter une solution. Les solutions exécutables se nomment `solution/solve.py` ou `solution/solve.sh` et reçoivent `CHALLENGE_HOST` et `CHALLENGE_PORT`. Une solution absente est indiquée comme ignorée. Les règles complètes et les exemples sont dans le document `CI-changes.md` et les exemples du dépôt 2026.
 
----
+## Tests locaux
 
-# PolyPwnCTF-2026-Challenges
+```sh
+python -m pip install PyYAML==6.0.2
+PYTHONPATH=. python -m unittest discover -s tests
+```
 
-This repository contains the challenges for the 2026 edition of PolyPwn, a CTF (Capture The Flag) event organized by [PolyCyber](https://polycyber.io/).
-
-The challenges will at some point be accessible directly on the permanent PolyCyber infrastructure: https://ctf.polycyber.io/
-
-## CI
-
-See [docs/ci.md](docs/ci.md) for the checks, QA workflow and test commands.
-
-## About
-
-PolyPwn is an annual event that brings together cybersecurity enthusiasts to solve technical challenges in various domains:
-- Reverse Engineering
-- Web Security
-- Cryptography
-- Forensics
-- Pwn
-- And more!
-
-## Repository Structure
-
-Challenges are organized by categories in dedicated folders. Each challenge includes:
-- Detailed description
-- Required files
-- Flag to find
-- Hints (if applicable)
+Les tests de déploiement nécessitent un environnement Linux isolé avec Docker et Docker Compose. Les images et les services des challenges sont construits et exécutés pendant la CI.

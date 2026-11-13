@@ -8,7 +8,6 @@ from unittest.mock import patch
 import yaml
 
 from scripts.validate_challenges import validate
-from scripts.test_deployments import probe, wait_ready
 
 
 class ManifestTests(unittest.TestCase):
@@ -63,44 +62,3 @@ class ManifestTests(unittest.TestCase):
         (self.path.parent / 'compose.yaml').write_text('services: {web: {image: example}}')
         self.assertEqual(self.check(type='zync', deploy_parameters=params), [])
 
-
-class ReadinessTests(unittest.TestCase):
-    @patch('scripts.test_deployments.inspect', return_value={'State': {'Status': 'exited', 'ExitCode': 1}})
-    def test_crashed_container_fails(self, inspect):
-        with self.assertRaises(ValueError):
-            wait_ready({'web': 'id'}, {'web': [{'port': 80, 'http': '/'}]})
-
-    @patch('scripts.test_deployments.inspect', return_value={'State': {'Status': 'running'}})
-    def test_running_without_probe_fails(self, inspect):
-        with self.assertRaises(ValueError):
-            wait_ready({'web': 'id'}, {'web': []})
-
-    @patch('scripts.test_deployments.inspect', return_value={'NetworkSettings': {'Networks': {'test': {'IPAddress': '127.0.0.1'}}}})
-    def test_http_responses(self, inspect):
-        class Handler(BaseHTTPRequestHandler):
-            def do_GET(self):
-                self.send_response(500 if self.path == '/broken' else 200)
-                self.end_headers()
-                self.wfile.write(b'ready')
-
-            def log_message(self, *args):
-                pass
-
-        server = HTTPServer(('127.0.0.1', 0), Handler)
-        thread = threading.Thread(target=server.serve_forever)
-        thread.start()
-        try:
-            check = {'port': server.server_port, 'http': '/', 'contains': 'ready'}
-            probe('id', check)
-            with self.assertRaises(RuntimeError):
-                probe('id', check | {'http': '/broken'})
-            with self.assertRaises(RuntimeError):
-                probe('id', check | {'contains': 'missing'})
-        finally:
-            server.shutdown()
-            server.server_close()
-            thread.join()
-
-
-if __name__ == '__main__':
-    unittest.main()
