@@ -2,7 +2,7 @@
 
 La CI valide les challenges modifiés lors des pull requests et des pushs sur `main` et `qa-branch`. Le fichier `.github/workflows/ci-generique.yml` appelle le workflow partagé à un commit précis.
 
-La source partagée est provisoirement hébergée sur la branche `ci/generic-shared` du fork. Son transfert vers le dépôt central PolyCyber et la mise à jour du commit appelé restent nécessaires avant adoption.
+La source partagée est provisoirement hébergée sur la branche `ci/central-autonome` du fork. Son transfert vers le dépôt central PolyCyber et la mise à jour du commit appelé restent nécessaires avant adoption.
 
 ## Vérifications
 
@@ -16,7 +16,7 @@ Une solution automatisée utilise `solution/solve.py` ou `solution/solve.sh`, li
 
 La CI produit un résultat global `ci / resultat`, un résumé par job et un commentaire mis à jour sur la PR lorsque les permissions le permettent. Les contributions provenant de forks peuvent disposer d'un jeton en lecture seule : dans ce cas le commentaire peut être indisponible, mais les résultats des jobs restent visibles.
 
-Les règles de protection actuelles du fork demandent encore les anciens checks `validate`, `docker-build` et `compose-build`. Un administrateur devra les remplacer par le check global de la CI générique après validation et avant fusion. Ne pas désactiver la protection sans la remplacer.
+Les protections du fork demandent encore les checks `validate`, `docker-build` et `compose-build`. Trois jobs de compatibilité reprennent ces noms et échouent si le workflow partagé échoue. Ils conservent la protection existante. Un administrateur pourra ensuite demander le check global `ci / resultat` et retirer ces jobs.
 
 ## Validation
 
