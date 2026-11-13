@@ -1,0 +1,13 @@
+name: Test complet CI autonome 2026
+on:
+  push:
+    branches: [ci/test-central-autonome]
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+jobs:
+  ci:
+    uses: pep28/PolyPwnCTF-2026-Challenges/.github/workflows/challenge-ci.yml@0b60115374d9ee372865f3e86b50989514dc057a
+    with:
+      tous: true
