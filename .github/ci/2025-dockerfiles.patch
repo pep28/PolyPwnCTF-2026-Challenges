@@ -1,0 +1,12 @@
+diff --git a/AI/exMachinhack/dockerfile b/AI/exMachinhack/Dockerfile
+similarity index 100%
+rename from AI/exMachinhack/dockerfile
+rename to AI/exMachinhack/Dockerfile
+diff --git a/Programming/hackladdin1/dockerfile b/Programming/hackladdin1/Dockerfile
+similarity index 100%
+rename from Programming/hackladdin1/dockerfile
+rename to Programming/hackladdin1/Dockerfile
+diff --git a/Programming/hackladdin2/dockerfile b/Programming/hackladdin2/Dockerfile
+similarity index 100%
+rename from Programming/hackladdin2/dockerfile
+rename to Programming/hackladdin2/Dockerfile
