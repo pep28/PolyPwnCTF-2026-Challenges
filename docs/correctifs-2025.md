@@ -1,14 +1,25 @@
 # Correctifs 2025
 
-Ces deux correctifs sont prévus pour le commit 2025 `606c0158e7cbffa5bc4f65c7a82e5edbccfe2ec4`. Ils n'ont pas été appliqués au dépôt officiel.
+Les correctifs s'appliquent à la révision `606c0158e7cbffa5bc4f65c7a82e5edbccfe2ec4` de l'édition 2025. Depuis une copie de cette révision, avec les trois patches dans le même dossier :
 
-- `2025-images.patch` fixe les images flottantes aux digests observés lors des builds précédents.
-- `interstellar-2025.patch` corrige le build Interstellar2 et fixe ses dépendances.
+```sh
+git apply --check /chemin/2025-images.patch /chemin/interstellar-2025.patch /chemin/2025-dockerfiles.patch
+git apply /chemin/2025-images.patch /chemin/interstellar-2025.patch /chemin/2025-dockerfiles.patch
+```
 
-Ils ont été appliqués temporairement sur une copie des sources pendant les tests. Les archives de Trésor National et Up - Photos souvenirs manquent toujours. Les images exMachinhack, hackladdin1 et hackladdin2 restent à examiner avec l'équipe.
+- `2025-images.patch` fixe les images flottantes aux digests relevés dans les builds précédents.
+- `interstellar-2025.patch` corrige le build d'Interstellar2 et fixe ses dépendances.
+- `2025-dockerfiles.patch` renomme `dockerfile` en `Dockerfile` pour exMachinhack, hackladdin1 et hackladdin2. La CI construit ces trois services depuis le code du dépôt et vérifie leur démarrage. Aucune image de challenge à récupérer dans un registre.
 
-Dans une copie de travail du dépôt 2025 placée sur le commit ci-dessus, appliquer les deux correctifs avec `git apply`. Vérifier les changements et relancer la CI avant de les proposer à PolyCyber.
+## Vérifications
 
-## Résultat des tests
+Le [test du 23 novembre](https://github.com/pep28/PolyPwnCTF-2026-Challenges/actions/runs/45250083027) applique les trois correctifs dans le runner sur une copie des sources officielles. 55 challenges sur 57 passent. Le build et le démarrage passent pour les trois services dont le fichier a été renommé.
 
-Avec les deux correctifs appliqués temporairement, [52 challenges sur 57 passent](https://github.com/pep28/PolyPwnCTF-2026-Challenges/actions/runs/43344255736). Les cinq échecs sont les deux archives absentes et les trois images sans version explicite. Le contrôle s'arrête sur l'absence de version avant de vérifier leur accès ; il ne confirme donc pas leur disponibilité actuelle.
+Deux fichiers distribués aux joueurs manquent sur la révision testée :
+
+| Challenge | Fichier attendu |
+| --- | --- |
+| Trésor National | `Forensic/TresorNational/files/chall.zip` |
+| Up - Photos souvenirs | `Forensic/Up - Photos souvenirs/files/UpChall.zip` |
+
+Le lien de téléchargement indiqué par le second manifeste a renvoyé une 404 lors de la vérification. Pour refaire le test avec les données d'origine, les archives doivent être fournies au runner depuis un emplacement approuvé par l'équipe. La vérification du manifeste continue d'échouer si le fichier manque.
